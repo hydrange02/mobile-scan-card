@@ -1,0 +1,54 @@
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+class WalletScreen extends StatefulWidget {
+  const WalletScreen({super.key});
+
+  @override
+  State<WalletScreen> createState() => _WalletScreenState();
+}
+
+class _WalletScreenState extends State<WalletScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _numberController = TextEditingController();
+
+  Future<void> _addCard() async {
+    if (_formKey.currentState!.validate()) {
+      final response = await http.post(
+        Uri.parse('http://localhost:3000/api/cards'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'cardName': _nameController.text,
+          'cardNumber': _numberController.text,
+        }),
+      );
+      if (response.statusCode == 201) {
+        if (!mounted) return;
+        Navigator.pop(context);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Manage Wallet')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(controller: _nameController, decoration: const InputDecoration(labelText: 'Card Name')),
+              TextFormField(controller: _numberController, decoration: const InputDecoration(labelText: 'Card Number')),
+              const SizedBox(height: 20),
+              ElevatedButton(onPressed: _addCard, child: const Text('Add Card')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

@@ -1,0 +1,8 @@
+class DatabaseService {
+  static final DatabaseService instance = DatabaseService._init();
+  DatabaseService._init();
+
+  Future<void> saveCard(String cardNumber, String cardName) async {}
+  Future<List<Map<String, dynamic>>> getCards() async => [];
+  Future<void> deleteCard(int id) async {}
+}

@@ -1,0 +1,27 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String
+  email     String   @unique
+  password  String
+  cards     Card[]
+  createdAt DateTime @default(now())
+}
+
+model Card {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  cardName  String
+  cardNumber String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+}

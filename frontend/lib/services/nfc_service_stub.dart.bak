@@ -1,0 +1,3 @@
+class NfcService {
+  Future<Map<String, dynamic>?> scanCard() async => null;
+}
