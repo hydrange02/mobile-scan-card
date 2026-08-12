@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import '../services/api_config.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -23,7 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       final response = await http.post(
-        Uri.parse('http://localhost:3000/api/auth/login'),
+        Uri.parse('${ApiConfig.baseUrl}/api/auth/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': _emailController.text,
@@ -33,7 +37,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (response.statusCode == 200) {
         if (!mounted) return;
-        Navigator.pushReplacementNamed(context, '/dashboard');
+        final responseData = jsonDecode(response.body);
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        authProvider.login(
+          token: responseData['token'],
+          user: responseData['user'],
+        );
+        Navigator.pushReplacementNamed(context, '/home');
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid credentials')));
