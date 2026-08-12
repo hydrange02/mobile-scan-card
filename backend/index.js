@@ -14,13 +14,15 @@ app.use(express.json());
 
 // Import Routes
 const authRoutes = require('./routes/auth');
-// Note: cardRoutes is assumed to be implemented in a separate file as per project structure
-// If it doesn't exist yet, it should be created to handle card operations
-const cardRoutes = require('./routes/cards'); 
+const cardRoutes = require('./routes/cards');
+const userRoutes = require('./routes/user');
+const transactionRoutes = require('./routes/transactions');
 
 // Register Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/cards', cardRoutes);
+app.use('/api/user', userRoutes);
+app.use('/api/transactions', transactionRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date() });

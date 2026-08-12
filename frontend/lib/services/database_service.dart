@@ -2,7 +2,6 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
 
-
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
   factory DatabaseService() => _instance;
@@ -10,8 +9,8 @@ class DatabaseService {
 
   static Database? _database;
   
-  // In a production app, store this key in FlutterSecureStorage
-  final _key = encrypt.Key.fromUtf8('my32lengthsupersecretkeymustbe32');
+  // In production, use a secure key storage like flutter_secure_storage
+  final _key = encrypt.Key.fromUtf8('a-very-secret-32-character-key!!');
   final _iv = encrypt.IV.fromLength(16);
 
   Future<Database> get database async {
@@ -53,7 +52,7 @@ class DatabaseService {
     
     return maps.map((row) {
       try {
-        final decrypted = encrypter.decrypt64(row['encryptedData'], iv: _iv);
+        final decrypted = encrypter.decrypt64(row['encryptedData'] as String, iv: _iv);
         return {
           'id': row['id'],
           'name': row['name'],
