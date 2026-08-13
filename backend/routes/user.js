@@ -7,13 +7,18 @@ const prisma = new PrismaClient();
 // Update password
 router.post('/update-password', async (req, res) => {
   try {
-    const { currentPassword, newPassword } = req.body;
+    const { currentPassword, newPassword, userId } = req.body;
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ error: 'Current password and new password are required' });
     }
 
-    // Default to first user or authenticated user
-    const user = await prisma.user.findFirst();
+    let user;
+    const parsedUserId = parseInt(userId);
+    if (parsedUserId && !isNaN(parsedUserId)) {
+      user = await prisma.user.findUnique({ where: { id: parsedUserId } });
+    } else {
+      user = await prisma.user.findFirst();
+    }
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }

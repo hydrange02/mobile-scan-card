@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'dart:convert';
+import '../providers/auth_provider.dart';
 import '../services/api_config.dart';
 import '../services/haptic_service.dart';
 import '../services/nfc_service.dart';
@@ -77,13 +79,16 @@ class _WalletScreenState extends State<WalletScreen> {
 
   Future<void> _addCardApi(String name, String number) async {
     try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final userId = authProvider.user?['id'] ?? 1;
+
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/cards'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'cardName': name,
           'cardNumber': number,
-          'userId': 1,
+          'userId': userId,
         }),
       );
       if (response.statusCode == 201 && mounted) {
@@ -147,9 +152,13 @@ class _WalletScreenState extends State<WalletScreen> {
           ),
         );
       }
-    } else if (result.containsKey('id')) {
-      final String tagId = result['id']?.toString() ?? 'NFC-Tag';
-      _addCardApi('Thẻ NFC ($tagId)', '411122223333${tagId.replaceAll(RegExp(r'\D'), '').padLeft(4, '0')}');
+    } else if (result.containsKey('id') && result['id'] != null) {
+      final String tagId = result['id'].toString();
+      final String cleanTag = tagId.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+      final String suffix = cleanTag.length >= 4
+          ? cleanTag.substring(cleanTag.length - 4).toUpperCase()
+          : cleanTag.padLeft(4, '0').toUpperCase();
+      _addCardApi('Thẻ NFC ($suffix)', '411122223333$suffix');
     }
   }
 

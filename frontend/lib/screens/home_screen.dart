@@ -362,7 +362,7 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(icon: const Icon(Icons.wallet), label: localeProvider.getText('wallet')),
           BottomNavigationBarItem(icon: const Icon(Icons.bar_chart), label: localeProvider.getText('reports')),
           BottomNavigationBarItem(icon: const Icon(Icons.settings), label: localeProvider.getText('settings')),
-          BottomNavigationBarItem(icon: const Icon(Icons.person), label: localeProvider.getText('person') != 'person' ? localeProvider.getText('person') : localeProvider.getText('profile')),
+          BottomNavigationBarItem(icon: const Icon(Icons.person), label: localeProvider.getText('profile')),
         ],
       ),
     );

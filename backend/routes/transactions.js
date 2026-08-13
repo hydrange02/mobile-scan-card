@@ -3,10 +3,15 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// Get all transactions
+// Get all transactions (optionally filtered by userId query parameter)
 router.get('/', async (req, res) => {
   try {
+    const { userId } = req.query;
+    const parsedUserId = parseInt(userId);
+    const where = (parsedUserId && !isNaN(parsedUserId)) ? { userId: parsedUserId } : {};
+
     const transactions = await prisma.transaction.findMany({
+      where,
       include: { card: true },
       orderBy: { createdAt: 'desc' },
     });
@@ -18,7 +23,9 @@ router.get('/', async (req, res) => {
       category: tx.category,
       date: tx.createdAt.toISOString().replace('T', ' ').substring(0, 16),
       cardName: tx.card ? tx.card.cardName : 'NFC Direct',
-      cardType: tx.card ? tx.card.cardName.split(' ')[0] : 'NFC',
+      cardType: tx.card 
+        ? (tx.card.cardName.toLowerCase().includes('visa') ? 'Visa' : tx.card.cardName.toLowerCase().includes('mastercard') ? 'Mastercard' : 'NFC')
+        : 'NFC',
       amount: tx.amount,
       isExpense: tx.isExpense,
       status: tx.status,

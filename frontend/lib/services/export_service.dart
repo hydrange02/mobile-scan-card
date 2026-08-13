@@ -33,7 +33,8 @@ class ExportService {
     for (var tx in transactions) {
       final id = (tx['id'] ?? '').toString().padRight(4);
       final date = (tx['date'] ?? '').toString().padRight(10);
-      final cardName = (tx['cardName'] ?? '').toString().padRight(13);
+      final rawCardName = (tx['cardName'] ?? '').toString();
+      final cardName = rawCardName.length > 13 ? rawCardName.substring(0, 13) : rawCardName.padRight(13);
       final amount = '\$${tx['amount'] ?? 0}'.padRight(7);
       final status = (tx['status'] ?? 'Success');
       pdf.writeln('$id | $date | $cardName | $amount | $status');
