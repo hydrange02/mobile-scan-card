@@ -24,7 +24,7 @@ router.get('/', async (req, res) => {
 // Create a new card
 router.post('/', async (req, res) => {
   try {
-    let { userId, cardName, cardNumber } = req.body;
+    let { userId, cardName, cardNumber, cardHolder, expiryDate, phone, balance } = req.body;
     let parsedUserId = parseInt(userId);
     if (!parsedUserId || isNaN(parsedUserId)) {
       let user = await prisma.user.findFirst();
@@ -45,6 +45,10 @@ router.post('/', async (req, res) => {
         userId: parsedUserId,
         cardName: cardName || 'Thẻ NFC Mới',
         cardNumber: cardNumber || '4111222233339999',
+        cardHolder: cardHolder || 'Chủ Thẻ NFC',
+        expiryDate: expiryDate || '12/28',
+        phone: phone || '',
+        balance: balance !== undefined ? parseFloat(balance) : 0.0,
         isDefault: isFirstCard
       }
     });
@@ -52,6 +56,45 @@ router.post('/', async (req, res) => {
   } catch (error) {
     console.error("Error creating card:", error);
     res.status(400).json({ error: 'Failed to create card', details: error.message });
+  }
+});
+
+// Get single card detail by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const cardId = parseInt(req.params.id);
+    const card = await prisma.card.findUnique({
+      where: { id: cardId },
+      include: { transactions: { orderBy: { createdAt: 'desc' } } }
+    });
+    if (!card) {
+      return res.status(404).json({ error: 'Card not found' });
+    }
+    res.json(card);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch card details' });
+  }
+});
+
+// Update card info by ID
+router.put('/:id', async (req, res) => {
+  try {
+    const cardId = parseInt(req.params.id);
+    const { cardName, cardHolder, expiryDate, phone } = req.body;
+
+    const updatedCard = await prisma.card.update({
+      where: { id: cardId },
+      data: {
+        ...(cardName && { cardName }),
+        ...(cardHolder !== undefined && { cardHolder }),
+        ...(expiryDate !== undefined && { expiryDate }),
+        ...(phone !== undefined && { phone }),
+      }
+    });
+
+    res.json(updatedCard);
+  } catch (error) {
+    res.status(400).json({ error: 'Failed to update card' });
   }
 });
 

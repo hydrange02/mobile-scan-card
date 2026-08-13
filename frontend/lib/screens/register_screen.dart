@@ -14,11 +14,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _pinController = TextEditingController();
   bool _isLoading = false;
 
   Future<void> _register() async {
-    if (_usernameController.text.isEmpty || _emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('All fields are required')));
+    final username = _usernameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    final pin = _pinController.text.trim();
+
+    if (username.isEmpty || email.isEmpty || password.isEmpty || pin.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng nhập đầy đủ tất cả thông tin (bao gồm Mã PIN)')),
+      );
+      return;
+    }
+
+    if (pin.length < 4 || pin.length > 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mã PIN phải từ 4 đến 6 chữ số')),
+      );
       return;
     }
 
@@ -28,18 +43,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Uri.parse('${ApiConfig.baseUrl}/api/auth/register'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'username': _usernameController.text,
-          'email': _emailController.text,
-          'password': _passwordController.text,
+          'username': username,
+          'email': email,
+          'password': password,
+          'pin': pin,
         }),
       );
 
       if (response.statusCode == 201) {
         if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đăng ký tài khoản thành công!'), backgroundColor: Colors.green),
+        );
         Navigator.pushReplacementNamed(context, '/login');
       } else {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Registration failed')));
+        final resData = jsonDecode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(resData['error'] ?? 'Đăng ký thất bại')),
+        );
       }
     } catch (e) {
       if (!mounted) return;
@@ -52,18 +74,58 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Register'), backgroundColor: Colors.transparent, elevation: 0),
+      appBar: AppBar(title: const Text('Đăng Ký Tài Khoản'), backgroundColor: Colors.transparent, elevation: 0),
       body: Container(
         decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF1a1a2e), Color(0xFF16213e)])),
         padding: const EdgeInsets.all(24.0),
-        child: Column(
-          children: [
-            TextField(controller: _usernameController, style: const TextStyle(color: Colors.white), decoration: const InputDecoration(labelText: 'Username', labelStyle: TextStyle(color: Colors.white70))),
-            TextField(controller: _emailController, style: const TextStyle(color: Colors.white), decoration: const InputDecoration(labelText: 'Email', labelStyle: TextStyle(color: Colors.white70))),
-            TextField(controller: _passwordController, style: const TextStyle(color: Colors.white), decoration: const InputDecoration(labelText: 'Password', labelStyle: TextStyle(color: Colors.white70)), obscureText: true),
-            const SizedBox(height: 30),
-            _isLoading ? const CircularProgressIndicator() : SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _register, style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent), child: const Text('Create Account', style: TextStyle(color: Colors.black)))),
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              TextField(
+                controller: _usernameController,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(labelText: 'Tên người dùng', labelStyle: TextStyle(color: Colors.white70)),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _emailController,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(labelText: 'Email', labelStyle: TextStyle(color: Colors.white70)),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _passwordController,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(labelText: 'Mật khẩu', labelStyle: TextStyle(color: Colors.white70)),
+                obscureText: true,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _pinController,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'Mã PIN bảo mật (6 chữ số)',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  hintText: 'Ví dụ: 123456',
+                  hintStyle: TextStyle(color: Colors.white38),
+                ),
+                obscureText: true,
+              ),
+              const SizedBox(height: 30),
+              _isLoading
+                  ? const CircularProgressIndicator()
+                  : SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _register,
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent),
+                        child: const Text('Tạo Tài Khoản', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+            ],
+          ),
         ),
       ),
     );
