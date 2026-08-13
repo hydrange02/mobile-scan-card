@@ -53,17 +53,46 @@ router.post('/', async (req, res) => {
       parsedUserId = user.id;
     }
 
+    let targetCardId = cardId ? parseInt(cardId) : null;
+    if (!targetCardId) {
+      // Look up default card for user if no cardId was provided
+      const defaultCard = await prisma.card.findFirst({
+        where: { userId: parsedUserId, isDefault: true }
+      });
+      if (defaultCard) {
+        targetCardId = defaultCard.id;
+      }
+    }
+
+    const txAmount = parseFloat(amount) || 0.0;
+    const isExp = isExpense !== undefined ? Boolean(isExpense) : true;
+    const txStatus = status || 'Success';
+
+    // Create transaction record
     const tx = await prisma.transaction.create({
       data: {
         userId: parsedUserId,
-        cardId: cardId ? parseInt(cardId) : null,
+        cardId: targetCardId,
         title: title || 'Thanh toán NFC 1-Chạm',
         category: category || 'Giao dịch NFC',
-        amount: parseFloat(amount) || 0.0,
-        isExpense: isExpense !== undefined ? Boolean(isExpense) : true,
-        status: status || 'Success',
+        amount: txAmount,
+        isExpense: isExp,
+        status: txStatus,
       },
     });
+
+    // Automatically update Card Balance if transaction was Successful and card exists
+    if (targetCardId && txStatus === 'Success') {
+      const card = await prisma.card.findUnique({ where: { id: targetCardId } });
+      if (card) {
+        let newBalance = isExp ? (card.balance - txAmount) : (card.balance + txAmount);
+        if (newBalance < 0) newBalance = 0.0; // Ensure balance doesn't drop below 0
+        await prisma.card.update({
+          where: { id: targetCardId },
+          data: { balance: newBalance }
+        });
+      }
+    }
 
     res.status(201).json(tx);
   } catch (error) {

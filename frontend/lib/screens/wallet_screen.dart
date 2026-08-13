@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../services/api_config.dart';
 import '../services/haptic_service.dart';
 import '../services/nfc_service.dart';
+import 'card_detail_screen.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -357,93 +358,100 @@ class _WalletScreenState extends State<WalletScreen> {
                     final maskedNumber = number.length > 4
                         ? "**** **** **** ${number.substring(number.length - 4)}"
                         : number;
-                    final double balance = (card['balance']?.toDouble() ?? 5240.50);
+                    final double balance = (card['balance']?.toDouble() ?? 0.0);
 
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: isDefault
-                              ? [const Color(0xFF6200EE), const Color(0xFF3700B3)]
-                              : [const Color(0xFF2C3E50), const Color(0xFF000000)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                    return InkWell(
+                      onTap: () {
+                        HapticService.selectionFeedback();
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => CardDetailScreen(cardData: card)));
+                      },
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: isDefault
+                                ? [const Color(0xFF6200EE), const Color(0xFF3700B3)]
+                                : [const Color(0xFF2C3E50), const Color(0xFF000000)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          border: isDefault ? Border.all(color: Colors.amber, width: 1.5) : null,
+                          boxShadow: const [
+                            BoxShadow(color: Colors.black45, blurRadius: 10, offset: Offset(0, 4))
+                          ],
                         ),
-                        borderRadius: BorderRadius.circular(20),
-                        border: isDefault ? Border.all(color: Colors.amber, width: 1.5) : null,
-                        boxShadow: const [
-                          BoxShadow(color: Colors.black45, blurRadius: 10, offset: Offset(0, 4))
-                        ],
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    Text(
-                                      card['cardName'].toString().toUpperCase(),
-                                      style: TextStyle(
-                                        color: isDefault ? Colors.amber : Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
+                        child: Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        card['cardName'].toString().toUpperCase(),
+                                        style: TextStyle(
+                                          color: isDefault ? Colors.amber : Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
                                       ),
-                                    ),
-                                    if (isDefault) ...[
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.amber.withValues(alpha: 0.2),
-                                          borderRadius: BorderRadius.circular(10),
-                                          border: Border.all(color: Colors.amber, width: 0.8),
+                                      if (isDefault) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.amber.withValues(alpha: 0.2),
+                                            borderRadius: BorderRadius.circular(10),
+                                            border: Border.all(color: Colors.amber, width: 0.8),
+                                          ),
+                                          child: const Text(
+                                            'MẶC ĐỊNH',
+                                            style: TextStyle(color: Colors.amber, fontSize: 10, fontWeight: FontWeight.bold),
+                                          ),
                                         ),
-                                        child: const Text(
-                                          'MẶC ĐỊNH',
-                                          style: TextStyle(color: Colors.amber, fontSize: 10, fontWeight: FontWeight.bold),
+                                      ],
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      if (!isDefault)
+                                        IconButton(
+                                          icon: const Icon(Icons.star_border, color: Colors.amber),
+                                          tooltip: 'Đặt làm mặc định',
+                                          onPressed: () => _setDefaultCard(card['id']),
                                         ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                        tooltip: 'Xóa thẻ khỏi ví',
+                                        onPressed: () => _deleteCard(card['id']),
                                       ),
                                     ],
-                                  ],
-                                ),
-                                Row(
-                                  children: [
-                                    if (!isDefault)
-                                      IconButton(
-                                        icon: const Icon(Icons.star_border, color: Colors.amber),
-                                        tooltip: 'Đặt làm mặc định',
-                                        onPressed: () => _setDefaultCard(card['id']),
-                                      ),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                                      tooltip: 'Xóa thẻ khỏi ví',
-                                      onPressed: () => _deleteCard(card['id']),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Số dư: \$${balance.toStringAsFixed(2)}',
-                              style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500),
-                            ),
-                            const SizedBox(height: 16),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  maskedNumber,
-                                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 2),
-                                ),
-                                const Icon(Icons.nfc, color: Colors.cyanAccent, size: 26),
-                              ],
-                            ),
-                          ],
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Số dư: \$${balance.toStringAsFixed(2)}',
+                                style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500),
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    maskedNumber,
+                                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 2),
+                                  ),
+                                  const Icon(Icons.nfc, color: Colors.cyanAccent, size: 26),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );

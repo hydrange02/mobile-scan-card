@@ -3,10 +3,11 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'wallet_screen.dart';
-import 'profile_screen.dart';
 import 'reports_screen.dart';
 import 'settings_screen.dart';
 import 'help_screen.dart';
+import 'card_detail_screen.dart';
+import 'payment_screen.dart';
 import '../providers/locale_provider.dart';
 import '../services/haptic_service.dart';
 import '../services/api_config.dart';
@@ -75,7 +76,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ? "**** **** **** ${cardNumber.substring(cardNumber.length - 4)}"
         : (cardNumber.isNotEmpty ? cardNumber : "**** **** **** ----");
     final String cardName = defaultCard != null ? defaultCard['cardName'].toString() : '';
-    final double cardBalance = defaultCard != null ? (defaultCard['balance']?.toDouble() ?? 5240.50) : 0.0;
+    final double cardBalance = defaultCard != null ? (defaultCard['balance']?.toDouble() ?? 0.0) : 0.0;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -123,7 +124,13 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           )
         else
-          Container(
+          InkWell(
+            onTap: () {
+              HapticService.selectionFeedback();
+              Navigator.push(context, MaterialPageRoute(builder: (_) => CardDetailScreen(cardData: defaultCard)));
+            },
+            borderRadius: BorderRadius.circular(24),
+            child: Container(
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [Color(0xFF4A00E0), Color(0xFF8E2DE2)],
@@ -192,6 +199,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
+        ),
 
         const SizedBox(height: 20),
 
@@ -327,9 +335,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final List<Widget> pages = [
       _buildHomeDashboard(),
       const WalletScreen(),
+      const PaymentScreen(),
       const ReportsScreen(),
       const SettingsScreen(),
-      const ProfileScreen(),
     ];
 
     return Scaffold(
@@ -360,9 +368,9 @@ class _HomeScreenState extends State<HomeScreen> {
         items: [
           BottomNavigationBarItem(icon: const Icon(Icons.home), label: localeProvider.getText('home')),
           BottomNavigationBarItem(icon: const Icon(Icons.wallet), label: localeProvider.getText('wallet')),
+          BottomNavigationBarItem(icon: const Icon(Icons.nfc_rounded, color: Colors.cyanAccent), label: 'Thanh toán'),
           BottomNavigationBarItem(icon: const Icon(Icons.bar_chart), label: localeProvider.getText('reports')),
           BottomNavigationBarItem(icon: const Icon(Icons.settings), label: localeProvider.getText('settings')),
-          BottomNavigationBarItem(icon: const Icon(Icons.person), label: localeProvider.getText('profile')),
         ],
       ),
     );
