@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'dart:convert';
+import '../providers/auth_provider.dart';
 import '../services/api_config.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -23,6 +25,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final userId = authProvider.user?['id'];
 
     try {
       final response = await http.post(
@@ -31,6 +35,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         body: jsonEncode({
           'currentPassword': _passwordController.text,
           'newPassword': _newPasswordController.text,
+          if (userId != null) 'userId': userId,
         }),
       );
 

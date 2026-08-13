@@ -3,10 +3,15 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// Get all cards (returns empty list [] if user has 0 cards, no auto-creation)
+// Get all cards (optionally filtered by userId query parameter)
 router.get('/', async (req, res) => {
   try {
+    const { userId } = req.query;
+    const parsedUserId = parseInt(userId);
+    const where = (parsedUserId && !isNaN(parsedUserId)) ? { userId: parsedUserId } : {};
+
     const cards = await prisma.card.findMany({
+      where,
       orderBy: { createdAt: 'desc' },
     });
     res.json(cards);

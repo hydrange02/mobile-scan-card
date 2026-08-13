@@ -11,6 +11,7 @@ import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/reports_screen.dart';
 import 'screens/help_screen.dart';
+import 'screens/wallet_screen.dart';
 
 void main() {
   runApp(
@@ -56,6 +57,8 @@ class NFCWalletApp extends StatelessWidget {
           '/login': (context) => const LoginScreen(),
           '/register': (context) => const RegisterScreen(),
           '/home': (context) => const HomeScreen(),
+          '/dashboard': (context) => const HomeScreen(),
+          '/wallet': (context) => const WalletScreen(),
           '/profile': (context) => const ProfileScreen(),
           '/settings': (context) => const SettingsScreen(),
           '/reports': (context) => const ReportsScreen(),
