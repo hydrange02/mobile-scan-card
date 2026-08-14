@@ -9,6 +9,11 @@ class AuthProvider extends ChangeNotifier {
   String? get token => _token;
   Map<String, dynamic>? get user => _user;
 
+  Map<String, String> get authHeaders => {
+    'Content-Type': 'application/json',
+    if (_token != null && _token!.isNotEmpty) 'Authorization': 'Bearer $_token',
+  };
+
   void login({String? token, Map<String, dynamic>? user}) {
     _isAuthenticated = true;
     _token = token;

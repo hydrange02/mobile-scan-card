@@ -3,15 +3,12 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// Get all cards (optionally filtered by userId query parameter)
+// Get all cards for authenticated user
 router.get('/', async (req, res) => {
   try {
-    const { userId } = req.query;
-    const parsedUserId = parseInt(userId);
-    const where = (parsedUserId && !isNaN(parsedUserId)) ? { userId: parsedUserId } : {};
-
+    const userId = req.user.userId;
     const cards = await prisma.card.findMany({
-      where,
+      where: { userId },
       orderBy: { createdAt: 'desc' },
     });
     res.json(cards);
@@ -21,28 +18,18 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Create a new card
+// Create a new card for authenticated user
 router.post('/', async (req, res) => {
   try {
-    let { userId, cardName, cardNumber, cardHolder, expiryDate, phone, balance } = req.body;
-    let parsedUserId = parseInt(userId);
-    if (!parsedUserId || isNaN(parsedUserId)) {
-      let user = await prisma.user.findFirst();
-      if (!user) {
-        user = await prisma.user.create({
-          data: { username: 'defaultuser', email: 'user@example.com', password: 'password123' }
-        });
-      }
-      parsedUserId = user.id;
-    }
+    const userId = req.user.userId;
+    const { cardName, cardNumber, cardHolder, expiryDate, phone, balance } = req.body;
 
-    // Check if this is the first card; if so, make it default
-    const existingCount = await prisma.card.count({ where: { userId: parsedUserId } });
+    const existingCount = await prisma.card.count({ where: { userId } });
     const isFirstCard = existingCount === 0;
 
     const card = await prisma.card.create({
       data: {
-        userId: parsedUserId,
+        userId,
         cardName: cardName || 'Thẻ NFC Mới',
         cardNumber: cardNumber || '4111222233339999',
         cardHolder: cardHolder || 'Chủ Thẻ NFC',
@@ -59,16 +46,17 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Get single card detail by ID
+// Get single card detail by ID (must belong to authenticated user)
 router.get('/:id', async (req, res) => {
   try {
+    const userId = req.user.userId;
     const cardId = parseInt(req.params.id);
-    const card = await prisma.card.findUnique({
-      where: { id: cardId },
+    const card = await prisma.card.findFirst({
+      where: { id: cardId, userId },
       include: { transactions: { orderBy: { createdAt: 'desc' } } }
     });
     if (!card) {
-      return res.status(404).json({ error: 'Card not found' });
+      return res.status(404).json({ error: 'Card not found or access denied' });
     }
     res.json(card);
   } catch (error) {
@@ -79,8 +67,14 @@ router.get('/:id', async (req, res) => {
 // Update card info by ID
 router.put('/:id', async (req, res) => {
   try {
+    const userId = req.user.userId;
     const cardId = parseInt(req.params.id);
     const { cardName, cardHolder, expiryDate, phone } = req.body;
+
+    const card = await prisma.card.findFirst({ where: { id: cardId, userId } });
+    if (!card) {
+      return res.status(404).json({ error: 'Card not found or access denied' });
+    }
 
     const updatedCard = await prisma.card.update({
       where: { id: cardId },
@@ -101,15 +95,16 @@ router.put('/:id', async (req, res) => {
 // Set card as default
 router.put('/:id/default', async (req, res) => {
   try {
+    const userId = req.user.userId;
     const cardId = parseInt(req.params.id);
-    const targetCard = await prisma.card.findUnique({ where: { id: cardId } });
+    const targetCard = await prisma.card.findFirst({ where: { id: cardId, userId } });
     if (!targetCard) {
-      return res.status(404).json({ error: 'Card not found' });
+      return res.status(404).json({ error: 'Card not found or access denied' });
     }
 
     // Unset current default cards for user
     await prisma.card.updateMany({
-      where: { userId: targetCard.userId },
+      where: { userId },
       data: { isDefault: false }
     });
 
@@ -129,14 +124,19 @@ router.put('/:id/default', async (req, res) => {
 // Delete card by ID
 router.delete('/:id', async (req, res) => {
   try {
+    const userId = req.user.userId;
     const cardId = parseInt(req.params.id);
-    const deletedCard = await prisma.card.findUnique({ where: { id: cardId } });
+    const targetCard = await prisma.card.findFirst({ where: { id: cardId, userId } });
+
+    if (!targetCard) {
+      return res.status(404).json({ error: 'Card not found or access denied' });
+    }
 
     await prisma.card.delete({ where: { id: cardId } });
 
     // If deleted card was default, set first remaining card as default (if any remain)
-    if (deletedCard && deletedCard.isDefault) {
-      const firstCard = await prisma.card.findFirst({ where: { userId: deletedCard.userId } });
+    if (targetCard.isDefault) {
+      const firstCard = await prisma.card.findFirst({ where: { userId } });
       if (firstCard) {
         await prisma.card.update({
           where: { id: firstCard.id },
@@ -148,16 +148,6 @@ router.delete('/:id', async (req, res) => {
     res.status(204).send();
   } catch (error) {
     res.status(400).json({ error: 'Failed to delete card' });
-  }
-});
-
-// Delete all cards endpoint (utility to clear dummy cards)
-router.delete('/', async (req, res) => {
-  try {
-    await prisma.card.deleteMany();
-    res.status(204).send();
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to clear cards' });
   }
 });
 

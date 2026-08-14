@@ -38,11 +38,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/user/update-password'),
-        headers: {'Content-Type': 'application/json'},
+        headers: authProvider.authHeaders,
         body: jsonEncode({
           'currentPassword': _passwordController.text.trim(),
           'newPassword': _newPasswordController.text.trim(),
-          if (userId != null) 'userId': userId,
         }),
       );
 
@@ -80,11 +79,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/user/update-pin'),
-        headers: {'Content-Type': 'application/json'},
+        headers: authProvider.authHeaders,
         body: jsonEncode({
           'currentPin': _currentPinController.text.trim(),
           'newPin': _newPinController.text.trim(),
-          if (userId != null) 'userId': userId,
         }),
       );
 
@@ -170,11 +168,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 try {
                   final response = await http.post(
                     Uri.parse('${ApiConfig.baseUrl}/api/user/reset-pin'),
-                    headers: {'Content-Type': 'application/json'},
+                    headers: authProvider.authHeaders,
                     body: jsonEncode({
                       'password': resetPasswordController.text.trim(),
                       'newPin': resetNewPinController.text.trim(),
-                      if (userId != null) 'userId': userId,
                     }),
                   );
                   Navigator.pop(ctx);

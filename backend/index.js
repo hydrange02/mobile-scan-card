@@ -18,11 +18,14 @@ const cardRoutes = require('./routes/cards');
 const userRoutes = require('./routes/user');
 const transactionRoutes = require('./routes/transactions');
 
+// Import Middleware
+const { authenticateToken } = require('./middleware/auth');
+
 // Register Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/cards', cardRoutes);
-app.use('/api/user', userRoutes);
-app.use('/api/transactions', transactionRoutes);
+app.use('/api/cards', authenticateToken, cardRoutes);
+app.use('/api/user', authenticateToken, userRoutes);
+app.use('/api/transactions', authenticateToken, transactionRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date() });

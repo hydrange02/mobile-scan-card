@@ -9,6 +9,7 @@ import 'help_screen.dart';
 import 'card_detail_screen.dart';
 import 'payment_screen.dart';
 import '../providers/locale_provider.dart';
+import '../providers/auth_provider.dart';
 import '../services/haptic_service.dart';
 import '../services/api_config.dart';
 
@@ -34,7 +35,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _fetchCards() async {
     try {
-      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/cards'));
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/cards'),
+        headers: authProvider.authHeaders,
+      );
       if (response.statusCode == 200) {
         if (!mounted) return;
         setState(() {
@@ -49,7 +54,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _fetchTransactions() async {
     try {
-      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/transactions'));
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/transactions'),
+        headers: authProvider.authHeaders,
+      );
       if (response.statusCode == 200 && mounted) {
         setState(() {
           recentTransactions = json.decode(response.body);

@@ -69,32 +69,95 @@ class NFCWalletApp extends StatelessWidget {
   }
 }
 
-class LockOverlayScreen extends StatelessWidget {
+class LockOverlayScreen extends StatefulWidget {
   const LockOverlayScreen({super.key});
 
   @override
+  State<LockOverlayScreen> createState() => _LockOverlayScreenState();
+}
+
+class _LockOverlayScreenState extends State<LockOverlayScreen> {
+  final _pinController = TextEditingController();
+
+  void _showUnlockDialog() {
+    _pinController.clear();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF16213E),
+        title: const Text('Nhập Mã PIN Để Mở Khóa', style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: _pinController,
+          keyboardType: TextInputType.number,
+          maxLength: 6,
+          obscureText: true,
+          style: const TextStyle(color: Colors.white, fontSize: 20, letterSpacing: 4),
+          decoration: const InputDecoration(
+            labelText: 'Mã PIN bảo mật',
+            labelStyle: TextStyle(color: Colors.white70),
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Hủy', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final autoLockService = Provider.of<AutoLockService>(context, listen: false);
+              final pin = _pinController.text.trim();
+              if (pin.length >= 4) {
+                Navigator.pop(ctx);
+                autoLockService.unlock();
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Vui lòng nhập mã PIN từ 4-6 chữ số'), backgroundColor: Colors.red),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent),
+            child: const Text('Mở khóa'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final autoLockService = Provider.of<AutoLockService>(context, listen: false);
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.lock, size: 80, color: Colors.purpleAccent),
-            const SizedBox(height: 20),
-            const Text(
-              'App Locked Due to Inactivity',
-              style: TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 30),
-            ElevatedButton.icon(
-              onPressed: () => autoLockService.unlock(),
-              icon: const Icon(Icons.lock_open),
-              label: const Text('Unlock Wallet'),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.lock, size: 80, color: Colors.purpleAccent),
+              const SizedBox(height: 20),
+              const Text(
+                'Ứng dụng đã bị khóa tự động',
+                style: TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Nhập Mã PIN bảo mật để mở khóa và tiếp tục sử dụng',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+              const SizedBox(height: 30),
+              ElevatedButton.icon(
+                onPressed: _showUnlockDialog,
+                icon: const Icon(Icons.lock_open),
+                label: const Text('Mở khóa Ví'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.purpleAccent,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
