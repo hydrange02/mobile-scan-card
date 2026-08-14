@@ -56,9 +56,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
       // Time Range Filter Logic
       if (_selectedTimeFilter != 'All') {
         final dateStr = (tx['date'] ?? '').toString();
-        DateTime? txDate = DateTime.tryParse(dateStr);
+        DateTime? txDate = DateTime.tryParse(dateStr)?.toLocal();
         if (txDate == null && dateStr.contains(' ')) {
-          txDate = DateTime.tryParse(dateStr.replaceFirst(' ', 'T'));
+          txDate = DateTime.tryParse(dateStr.replaceFirst(' ', 'T'))?.toLocal();
         }
         if (txDate != null) {
           if (_selectedTimeFilter == 'Today') {
@@ -82,6 +82,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
       }
       return true;
     }).toList();
+  }
+
+  String _formatDate(String? rawDate) {
+    if (rawDate == null || rawDate.isEmpty) return '';
+    final dt = DateTime.tryParse(rawDate)?.toLocal();
+    if (dt == null) return rawDate;
+    final month = dt.month.toString().padLeft(2, '0');
+    final day = dt.day.toString().padLeft(2, '0');
+    final hour = dt.hour.toString().padLeft(2, '0');
+    final minute = dt.minute.toString().padLeft(2, '0');
+    return '${dt.year}-$month-$day $hour:$minute';
   }
 
   void _showTransactionDetails(Map<String, dynamic> tx) {
@@ -132,7 +143,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             const Divider(color: Colors.white12),
             const SizedBox(height: 8),
             _buildDetailRow('Mã giao dịch', tx['id'].toString()),
-            _buildDetailRow('Thời gian', tx['date'].toString()),
+            _buildDetailRow('Thời gian', _formatDate(tx['date']?.toString())),
             _buildDetailRow('Danh mục', (tx['category'] ?? 'Giao dịch').toString()),
             _buildDetailRow('Nguồn tiền/Thẻ', tx['cardName'].toString()),
             _buildDetailRow(
@@ -524,7 +535,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15),
                 ),
                 subtitle: Text(
-                  '${tx['id']} • ${tx['date']}\n${tx['cardName']}',
+                  '${tx['id']} • ${_formatDate(tx['date']?.toString())}\n${tx['cardName']}',
                   style: const TextStyle(color: Colors.white54, fontSize: 11),
                 ),
                 trailing: Column(

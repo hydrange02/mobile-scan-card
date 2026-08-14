@@ -67,6 +67,17 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (_) {}
   }
 
+  String _formatDate(String? rawDate) {
+    if (rawDate == null || rawDate.isEmpty) return '';
+    final dt = DateTime.tryParse(rawDate)?.toLocal();
+    if (dt == null) return rawDate;
+    final month = dt.month.toString().padLeft(2, '0');
+    final day = dt.day.toString().padLeft(2, '0');
+    final hour = dt.hour.toString().padLeft(2, '0');
+    final minute = dt.minute.toString().padLeft(2, '0');
+    return '$month-$day $hour:$minute';
+  }
+
   Widget _buildHomeDashboard() {
     final localeProvider = Provider.of<LocaleProvider>(context);
 
@@ -319,7 +330,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
                 ),
                 subtitle: Text(
-                  '${tx['date']} • ${tx['cardName']}',
+                  '${_formatDate(tx['date']?.toString())} • ${tx['cardName']}',
                   style: const TextStyle(color: Colors.white54, fontSize: 12),
                 ),
                 trailing: Text(
