@@ -19,7 +19,7 @@ router.get('/', async (req, res) => {
       dbId: tx.id,
       title: tx.title,
       category: tx.category,
-      date: tx.createdAt.toISOString().replace('T', ' ').substring(0, 16),
+      date: tx.createdAt.toISOString(),
       cardName: tx.card ? tx.card.cardName : 'NFC Direct',
       cardType: tx.card 
         ? (tx.card.cardName.toLowerCase().includes('visa') ? 'Visa' : tx.card.cardName.toLowerCase().includes('mastercard') ? 'Mastercard' : 'NFC')
@@ -88,7 +88,8 @@ router.post('/', async (req, res) => {
 
       // 2. Update card balance if transaction is successful
       if (targetCardId && txStatus === 'Success' && targetCard) {
-        const newBalance = isExp ? (targetCard.balance - txAmount) : (targetCard.balance + txAmount);
+        const rawBalance = isExp ? (targetCard.balance - txAmount) : (targetCard.balance + txAmount);
+        const newBalance = Math.round(rawBalance * 100) / 100;
         await txPrisma.card.update({
           where: { id: targetCardId },
           data: { balance: newBalance }

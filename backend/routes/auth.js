@@ -42,7 +42,8 @@ router.post('/login', async (req, res) => {
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'supersecretkey', { expiresIn: '24h' });
+    const secret = process.env.JWT_SECRET || 'supersecretnfcwalletkey123';
+    const token = jwt.sign({ userId: user.id }, secret, { expiresIn: '24h' });
     res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
