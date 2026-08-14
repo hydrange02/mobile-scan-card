@@ -9,9 +9,7 @@ class DatabaseService {
 
   static Database? _database;
   
-  // In production, use a secure key storage like flutter_secure_storage
   final _key = encrypt.Key.fromUtf8('a-very-secret-32-character-key!!');
-  final _iv = encrypt.IV.fromLength(16);
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -33,13 +31,15 @@ class DatabaseService {
   }
 
   Future<void> saveCard(String name, String rawData) async {
+    final iv = encrypt.IV.fromSecureRandom(16);
     final encrypter = encrypt.Encrypter(encrypt.AES(_key, mode: encrypt.AESMode.cbc));
-    final encrypted = encrypter.encrypt(rawData, iv: _iv);
+    final encrypted = encrypter.encrypt(rawData, iv: iv);
+    final payload = '${iv.base64}:${encrypted.base64}';
     
     final db = await database;
     await db.insert('cards', {
       'name': name,
-      'encryptedData': encrypted.base64,
+      'encryptedData': payload,
       'createdAt': DateTime.now().toIso8601String(),
     });
   }
@@ -52,7 +52,19 @@ class DatabaseService {
     
     return maps.map((row) {
       try {
-        final decrypted = encrypter.decrypt64(row['encryptedData'] as String, iv: _iv);
+        final rawData = row['encryptedData'] as String;
+        final parts = rawData.split(':');
+        encrypt.IV iv;
+        String cipherBase64;
+        if (parts.length == 2) {
+          iv = encrypt.IV.fromBase64(parts[0]);
+          cipherBase64 = parts[1];
+        } else {
+          iv = encrypt.IV.fromLength(16);
+          cipherBase64 = rawData;
+        }
+
+        final decrypted = encrypter.decrypt64(cipherBase64, iv: iv);
         return {
           'id': row['id'],
           'name': row['name'],

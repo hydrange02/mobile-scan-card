@@ -32,11 +32,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _fetchUserProfile() async {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final userId = authProvider.user?['id'];
-      final uri = userId != null
-          ? Uri.parse('${ApiConfig.baseUrl}/api/user/profile?userId=$userId')
-          : Uri.parse('${ApiConfig.baseUrl}/api/user/profile');
-      final response = await http.get(uri);
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/user/profile'),
+        headers: authProvider.authHeaders,
+      );
       if (response.statusCode == 200 && mounted) {
         setState(() {
           _userProfile = json.decode(response.body);
@@ -116,13 +115,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () async {
               Navigator.pop(ctx);
               final authProvider = Provider.of<AuthProvider>(context, listen: false);
-              final userId = authProvider.user?['id'];
               try {
                 final response = await http.put(
                   Uri.parse('${ApiConfig.baseUrl}/api/user/update-profile'),
-                  headers: {'Content-Type': 'application/json'},
+                  headers: authProvider.authHeaders,
                   body: json.encode({
-                    'userId': userId,
                     'fullName': nameController.text.trim(),
                     'phone': phoneController.text.trim(),
                     'address': addressController.text.trim(),
@@ -207,11 +204,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 try {
                   final response = await http.post(
                     Uri.parse('${ApiConfig.baseUrl}/api/user/update-password'),
-                    headers: {'Content-Type': 'application/json'},
+                    headers: authProvider.authHeaders,
                     body: jsonEncode({
                       'currentPassword': currentPassController.text.trim(),
                       'newPassword': newPassController.text.trim(),
-                      if (userId != null) 'userId': userId,
                     }),
                   );
                   Navigator.pop(ctx);
@@ -303,11 +299,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 try {
                   final response = await http.post(
                     Uri.parse('${ApiConfig.baseUrl}/api/user/update-pin'),
-                    headers: {'Content-Type': 'application/json'},
+                    headers: authProvider.authHeaders,
                     body: jsonEncode({
                       'currentPin': currentPinController.text.trim(),
                       'newPin': newPinController.text.trim(),
-                      if (userId != null) 'userId': userId,
                     }),
                   );
                   Navigator.pop(ctx);
@@ -400,11 +395,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 try {
                   final response = await http.post(
                     Uri.parse('${ApiConfig.baseUrl}/api/user/reset-pin'),
-                    headers: {'Content-Type': 'application/json'},
+                    headers: authProvider.authHeaders,
                     body: jsonEncode({
                       'password': passwordController.text.trim(),
                       'newPin': newPinController.text.trim(),
-                      if (userId != null) 'userId': userId,
                     }),
                   );
                   Navigator.pop(ctx);

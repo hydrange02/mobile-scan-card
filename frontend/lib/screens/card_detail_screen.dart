@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:provider/provider.dart';
 import '../services/api_config.dart';
 import '../services/haptic_service.dart';
+import '../providers/auth_provider.dart';
 
 class CardDetailScreen extends StatefulWidget {
   final Map<String, dynamic> cardData;
@@ -28,7 +30,11 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
     final int? id = _card['id'];
     if (id == null) return;
     try {
-      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/cards/$id'));
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/cards/$id'),
+        headers: authProvider.authHeaders,
+      );
       if (response.statusCode == 200 && mounted) {
         setState(() {
           _card = json.decode(response.body);
@@ -113,9 +119,10 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                 Navigator.pop(ctx);
                 setState(() => _isLoading = true);
                 try {
+                  final authProvider = Provider.of<AuthProvider>(context, listen: false);
                   final response = await http.put(
                     Uri.parse('${ApiConfig.baseUrl}/api/cards/${_card['id']}'),
-                    headers: {'Content-Type': 'application/json'},
+                    headers: authProvider.authHeaders,
                     body: json.encode({
                       'cardName': nameController.text.trim(),
                       'cardHolder': holderController.text.trim(),

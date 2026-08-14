@@ -35,11 +35,10 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
   Future<void> _fetchCards() async {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final userId = authProvider.user?['id'];
-      final uri = userId != null
-          ? Uri.parse('${ApiConfig.baseUrl}/api/cards?userId=$userId')
-          : Uri.parse('${ApiConfig.baseUrl}/api/cards');
-      final response = await http.get(uri);
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/cards'),
+        headers: authProvider.authHeaders,
+      );
       if (response.statusCode == 200 && mounted) {
         final list = json.decode(response.body) as List;
         setState(() {
@@ -66,14 +65,12 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
 
     setState(() => _isProcessingPayment = true);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final userId = authProvider.user?['id'] ?? 1;
 
     try {
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/transactions'),
-        headers: {'Content-Type': 'application/json'},
+        headers: authProvider.authHeaders,
         body: json.encode({
-          'userId': userId,
           'cardId': _selectedCard?['id'],
           'title': _noteController.text.trim().isNotEmpty ? _noteController.text.trim() : 'Thanh toán $method',
           'category': 'Thanh toán $method',
@@ -87,13 +84,14 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         HapticService.successFeedback();
         _showSuccessPaymentDialog(amount, method);
       } else {
-        throw Exception('Giao dịch thất bại');
+        final resBody = json.decode(response.body);
+        throw Exception(resBody['error'] ?? 'Giao dịch thất bại');
       }
     } catch (e) {
       if (mounted) {
         HapticService.errorFeedback();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Thanh toán thất bại: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Thanh toán thất bại: ${e.toString().replaceAll("Exception: ", "")}'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -137,8 +135,15 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
     if (result.containsKey('id') || result['valid'] == true) {
       _processPaymentApi(method: 'Chạm NFC 1-Chạm');
     } else {
-      // Demo fallback trigger for testing NFC payment
-      _processPaymentApi(method: 'Chạm NFC 1-Chạm');
+      if (mounted) {
+        HapticService.errorFeedback();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['error'] ?? 'Không nhận diện được thẻ NFC. Vui lòng thử lại.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     }
   }
 

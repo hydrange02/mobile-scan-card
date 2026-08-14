@@ -7,18 +7,13 @@ const prisma = new PrismaClient();
 // Update password
 router.post('/update-password', async (req, res) => {
   try {
-    const { currentPassword, newPassword, userId } = req.body;
+    const userId = req.user.userId;
+    const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ error: 'Current password and new password are required' });
     }
 
-    let user;
-    const parsedUserId = parseInt(userId);
-    if (parsedUserId && !isNaN(parsedUserId)) {
-      user = await prisma.user.findUnique({ where: { id: parsedUserId } });
-    } else {
-      user = await prisma.user.findFirst();
-    }
+    const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -44,7 +39,8 @@ router.post('/update-password', async (req, res) => {
 // Update PIN
 router.post('/update-pin', async (req, res) => {
   try {
-    const { currentPin, newPin, userId } = req.body;
+    const userId = req.user.userId;
+    const { currentPin, newPin } = req.body;
     const strNewPin = newPin != null ? String(newPin).trim() : '';
     const strCurrentPin = currentPin != null ? String(currentPin).trim() : '';
 
@@ -52,13 +48,7 @@ router.post('/update-pin', async (req, res) => {
       return res.status(400).json({ error: 'Mã PIN mới phải từ 4-6 chữ số' });
     }
 
-    let user;
-    const parsedUserId = parseInt(userId);
-    if (parsedUserId && !isNaN(parsedUserId)) {
-      user = await prisma.user.findUnique({ where: { id: parsedUserId } });
-    } else {
-      user = await prisma.user.findFirst();
-    }
+    const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -89,7 +79,8 @@ router.post('/update-pin', async (req, res) => {
 // Reset / Forgot PIN (via current account password)
 router.post('/reset-pin', async (req, res) => {
   try {
-    const { password, newPin, userId } = req.body;
+    const userId = req.user.userId;
+    const { password, newPin } = req.body;
     const strNewPin = newPin != null ? String(newPin).trim() : '';
 
     if (!password || !strNewPin) {
@@ -99,13 +90,7 @@ router.post('/reset-pin', async (req, res) => {
       return res.status(400).json({ error: 'Mã PIN mới phải từ 4-6 chữ số' });
     }
 
-    let user;
-    const parsedUserId = parseInt(userId);
-    if (parsedUserId && !isNaN(parsedUserId)) {
-      user = await prisma.user.findUnique({ where: { id: parsedUserId } });
-    } else {
-      user = await prisma.user.findFirst();
-    }
+    const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -131,14 +116,8 @@ router.post('/reset-pin', async (req, res) => {
 // Get User Profile Info
 router.get('/profile', async (req, res) => {
   try {
-    const { userId } = req.query;
-    let user;
-    const parsedUserId = parseInt(userId);
-    if (parsedUserId && !isNaN(parsedUserId)) {
-      user = await prisma.user.findUnique({ where: { id: parsedUserId } });
-    } else {
-      user = await prisma.user.findFirst();
-    }
+    const userId = req.user.userId;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -163,15 +142,10 @@ router.get('/profile', async (req, res) => {
 // Update User Profile Info
 router.put('/update-profile', async (req, res) => {
   try {
-    const { userId, fullName, phone, address, dob, username } = req.body;
-    let user;
-    const parsedUserId = parseInt(userId);
-    if (parsedUserId && !isNaN(parsedUserId)) {
-      user = await prisma.user.findUnique({ where: { id: parsedUserId } });
-    } else {
-      user = await prisma.user.findFirst();
-    }
+    const userId = req.user.userId;
+    const { fullName, phone, address, dob, username } = req.body;
 
+    const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }

@@ -6,6 +6,7 @@ import '../services/api_config.dart';
 import '../services/export_service.dart';
 import '../services/haptic_service.dart';
 import '../providers/locale_provider.dart';
+import '../providers/auth_provider.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -30,7 +31,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Future<void> _fetchTransactions() async {
     try {
-      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/transactions'));
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/transactions'),
+        headers: authProvider.authHeaders,
+      );
       if (response.statusCode == 200 && mounted) {
         setState(() {
           _allTransactions = json.decode(response.body);

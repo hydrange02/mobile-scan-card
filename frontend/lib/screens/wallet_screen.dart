@@ -28,7 +28,11 @@ class _WalletScreenState extends State<WalletScreen> {
   Future<void> _fetchCards() async {
     setState(() => _isLoading = true);
     try {
-      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/cards'));
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/cards'),
+        headers: authProvider.authHeaders,
+      );
       if (response.statusCode == 200 && mounted) {
         setState(() {
           _cards = json.decode(response.body);
@@ -42,7 +46,11 @@ class _WalletScreenState extends State<WalletScreen> {
 
   Future<void> _setDefaultCard(int id) async {
     try {
-      final response = await http.put(Uri.parse('${ApiConfig.baseUrl}/api/cards/$id/default'));
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/api/cards/$id/default'),
+        headers: authProvider.authHeaders,
+      );
       if (response.statusCode == 200 && mounted) {
         HapticService.successFeedback();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -61,7 +69,11 @@ class _WalletScreenState extends State<WalletScreen> {
 
   Future<void> _deleteCard(int id) async {
     try {
-      final response = await http.delete(Uri.parse('${ApiConfig.baseUrl}/api/cards/$id'));
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final response = await http.delete(
+        Uri.parse('${ApiConfig.baseUrl}/api/cards/$id'),
+        headers: authProvider.authHeaders,
+      );
       if ((response.statusCode == 200 || response.statusCode == 204) && mounted) {
         HapticService.successFeedback();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -81,15 +93,12 @@ class _WalletScreenState extends State<WalletScreen> {
   Future<void> _addCardApi(String name, String number) async {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final userId = authProvider.user?['id'] ?? 1;
-
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/cards'),
-        headers: {'Content-Type': 'application/json'},
+        headers: authProvider.authHeaders,
         body: json.encode({
           'cardName': name,
           'cardNumber': number,
-          'userId': userId,
         }),
       );
       if (response.statusCode == 201 && mounted) {
