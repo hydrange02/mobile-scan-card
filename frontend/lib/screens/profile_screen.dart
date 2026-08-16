@@ -32,6 +32,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _updatePassword() async {
     if (!_passwordFormKey.currentState!.validate()) return;
 
+    if (_passwordController.text.trim() == _newPasswordController.text.trim()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mật khẩu mới không được trùng với mật khẩu hiện tại!'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
     setState(() => _isLoadingPassword = true);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
@@ -72,6 +79,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _updatePin() async {
     if (!_pinFormKey.currentState!.validate()) return;
+
+    if (_currentPinController.text.trim().isNotEmpty &&
+        _currentPinController.text.trim() == _newPinController.text.trim()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mã PIN mới không được trùng với Mã PIN hiện tại!'), backgroundColor: Colors.red),
+      );
+      return;
+    }
 
     setState(() => _isLoadingPin = true);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -213,6 +228,168 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  void _showEditProfileDialog(AuthProvider authProvider) {
+    final user = authProvider.user ?? {};
+    final fullNameController = TextEditingController(text: user['fullName']?.toString() ?? '');
+    final usernameController = TextEditingController(text: user['username']?.toString() ?? '');
+    final phoneController = TextEditingController(text: user['phone']?.toString() ?? '');
+    final addressController = TextEditingController(text: user['address']?.toString() ?? '');
+    final dobController = TextEditingController(text: user['dob']?.toString() ?? '');
+    final formKey = GlobalKey<FormState>();
+
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF16213E),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.edit_note_rounded, color: Colors.cyanAccent, size: 28),
+              SizedBox(width: 8),
+              Text('Cập Nhật Thông Tin', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: fullNameController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      labelText: 'Họ và tên',
+                      labelStyle: TextStyle(color: Colors.white70),
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) => (v?.trim().isEmpty ?? true) ? 'Vui lòng nhập họ và tên' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: usernameController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      labelText: 'Tên người dùng (Username)',
+                      labelStyle: TextStyle(color: Colors.white70),
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) => (v?.trim().isEmpty ?? true) ? 'Vui lòng nhập username' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: phoneController,
+                    keyboardType: TextInputType.phone,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      labelText: 'Số điện thoại (10 chữ số)',
+                      labelStyle: TextStyle(color: Colors.white70),
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return null;
+                      final clean = v.trim();
+                      if (!RegExp(r'^(\+84|0)[35789][0-9]{8}$').hasMatch(clean)) {
+                        return 'Số ĐT không hợp lệ (ví dụ: 0912345678)';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: addressController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      labelText: 'Địa chỉ',
+                      labelStyle: TextStyle(color: Colors.white70),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: dobController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      labelText: 'Ngày sinh (DD/MM/YYYY)',
+                      labelStyle: TextStyle(color: Colors.white70),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Hủy', style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              onPressed: isSubmitting
+                  ? null
+                  : () async {
+                      if (formKey.currentState!.validate()) {
+                        setDialogState(() => isSubmitting = true);
+                        try {
+                          final response = await http.put(
+                            Uri.parse('${ApiConfig.baseUrl}/api/user/update-profile'),
+                            headers: authProvider.authHeaders,
+                            body: jsonEncode({
+                              'fullName': fullNameController.text.trim(),
+                              'username': usernameController.text.trim(),
+                              'phone': phoneController.text.trim(),
+                              'address': addressController.text.trim(),
+                              'dob': dobController.text.trim(),
+                            }),
+                          );
+
+                          if (response.statusCode == 200) {
+                            final navState = navigatorKey.currentState;
+                            if (navState != null && navState.canPop()) {
+                              navState.pop();
+                            }
+                            await authProvider.fetchUserProfile();
+                            final currentCtx = navigatorKey.currentContext;
+                            if (currentCtx != null && currentCtx.mounted) {
+                              ScaffoldMessenger.of(currentCtx).showSnackBar(
+                                const SnackBar(content: Text('Cập nhật thông tin cá nhân thành công!'), backgroundColor: Colors.green),
+                              );
+                            }
+                          } else {
+                            final resData = jsonDecode(response.body);
+                            final currentCtx = navigatorKey.currentContext;
+                            if (currentCtx != null && currentCtx.mounted) {
+                              ScaffoldMessenger.of(currentCtx).showSnackBar(
+                                SnackBar(content: Text(resData['error'] ?? 'Cập nhật thất bại'), backgroundColor: Colors.red),
+                              );
+                            }
+                          }
+                        } catch (e) {
+                          final currentCtx = navigatorKey.currentContext;
+                          if (currentCtx != null && currentCtx.mounted) {
+                            ScaffoldMessenger.of(currentCtx).showSnackBar(
+                              SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
+                            );
+                          }
+                        } finally {
+                          setDialogState(() => isSubmitting = false);
+                        }
+                      }
+                    },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black),
+              child: isSubmitting
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                  : const Text('Lưu Thay Đổi'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final localeProvider = Provider.of<LocaleProvider>(context);
@@ -231,6 +408,74 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // User Profile Card Header
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF2C3E50), Color(0xFF000000)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.3)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(colors: [Colors.cyanAccent, Colors.purpleAccent]),
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const Icon(Icons.person, color: Colors.black, size: 36),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          (authProvider.user?['fullName']?.toString().isNotEmpty == true)
+                              ? authProvider.user!['fullName'].toString()
+                              : (authProvider.user?['username'] ?? 'Người Dùng NFC'),
+                          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          authProvider.user?['email'] ?? 'user@nfcwallet.com',
+                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                        ),
+                        if (authProvider.user?['phone']?.toString().isNotEmpty == true) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            'SĐT: ${authProvider.user!['phone']}',
+                            style: const TextStyle(color: Colors.cyanAccent, fontSize: 12),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit_note_rounded, color: Colors.cyanAccent, size: 28),
+                    tooltip: 'Cập nhật thông tin cá nhân',
+                    onPressed: () => _showEditProfileDialog(authProvider),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
             // Header Security Section
             Text(
               localeProvider.getText('account_security'),

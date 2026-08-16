@@ -191,77 +191,162 @@ class _WalletScreenState extends State<WalletScreen> {
     final nameController = TextEditingController();
     final numberController = TextEditingController();
 
+    String detectedBrand = '';
+    Color brandColor = Colors.cyanAccent;
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF16213E),
-        title: const Text('Nhập Thông Tin Thẻ Thủ Công', style: TextStyle(color: Colors.white)),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: nameController,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Tên gợi nhớ của thẻ (Tùy chọn)',
-                  hintText: 'Để trống sẽ tự tạo: Thẻ Visa (4 số cuối)',
-                  hintStyle: TextStyle(color: Colors.white38, fontSize: 12),
-                  labelStyle: TextStyle(color: Colors.white70),
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return null; // Allow empty to trigger auto name
-                  final clean = v.trim();
-                  if (clean.length < 2 || clean.length > 50) return 'Tên thẻ phải từ 2 đến 50 ký tự';
-                  if (RegExp(r'[<>{}[\]\\\/@#$%^&*()=~|]').hasMatch(clean)) {
-                    return 'Tên thẻ không được chứa các ký tự đặc biệt';
-                  }
-                  return null;
-                },
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) {
+          void updateBrand(String val) {
+            final clean = val.replaceAll(RegExp(r'\s+'), '');
+            String brand = '';
+            Color col = Colors.cyanAccent;
+
+            if (clean.startsWith('4')) {
+              brand = 'VISA';
+              col = Colors.blueAccent;
+            } else if (RegExp(r'^(5[1-5]|2[2-7])').hasMatch(clean)) {
+              brand = 'MASTERCARD';
+              col = Colors.orangeAccent;
+            } else if (clean.startsWith('9704')) {
+              brand = 'NAPAS (ATM)';
+              col = Colors.greenAccent;
+            } else if (RegExp(r'^(34|37)').hasMatch(clean)) {
+              brand = 'AMEX';
+              col = Colors.cyanAccent;
+            } else if (RegExp(r'^35').hasMatch(clean)) {
+              brand = 'JCB';
+              col = Colors.purpleAccent;
+            } else if (RegExp(r'^(62|81)').hasMatch(clean)) {
+              brand = 'UNIONPAY';
+              col = Colors.tealAccent;
+            }
+
+            setDialogState(() {
+              detectedBrand = brand;
+              brandColor = col;
+            });
+          }
+
+          return AlertDialog(
+            backgroundColor: const Color(0xFF16213E),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(
+              children: [
+                Icon(Icons.credit_card_rounded, color: Colors.cyanAccent, size: 28),
+                SizedBox(width: 8),
+                Text('Nhập Thông Tin Thẻ Thủ Công', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextFormField(
+                    controller: nameController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      labelText: 'Tên gợi nhớ của thẻ (Tùy chọn)',
+                      hintText: 'Để trống sẽ tự nhận diện loại thẻ + 4 số cuối',
+                      hintStyle: TextStyle(color: Colors.white38, fontSize: 11),
+                      labelStyle: TextStyle(color: Colors.white70),
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return null;
+                      final clean = v.trim();
+                      if (clean.length < 2 || clean.length > 50) return 'Tên thẻ phải từ 2 đến 50 ký tự';
+                      if (RegExp(r'[<>{}[\]\\\/@#$%^&*()=~|]').hasMatch(clean)) {
+                        return 'Tên thẻ không được chứa các ký tự đặc biệt';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: numberController,
+                    style: const TextStyle(color: Colors.white),
+                    keyboardType: TextInputType.number,
+                    maxLength: 19,
+                    onChanged: updateBrand,
+                    decoration: InputDecoration(
+                      labelText: 'Số thẻ ngân hàng (15-19 chữ số)',
+                      labelStyle: const TextStyle(color: Colors.white70),
+                      hintText: 'Ví dụ: 4111222233334444 hoặc 9704123456789012',
+                      hintStyle: const TextStyle(color: Colors.white38, fontSize: 11),
+                      border: const OutlineInputBorder(),
+                      suffixIcon: detectedBrand.isNotEmpty
+                          ? Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: Chip(
+                                label: Text(
+                                  detectedBrand,
+                                  style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 10),
+                                ),
+                                backgroundColor: brandColor,
+                                padding: EdgeInsets.zero,
+                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                            )
+                          : null,
+                    ),
+                    validator: (v) {
+                      final clean = (v ?? '').replaceAll(RegExp(r'\s+'), '');
+                      if (clean.isEmpty) return 'Vui lòng nhập số thẻ ngân hàng';
+                      if (!RegExp(r'^\d+$').hasMatch(clean)) return 'Số thẻ chỉ được chứa chữ số';
+                      if (clean.length < 15 || clean.length > 19) return 'Số thẻ phải từ 15 đến 19 chữ số (chuẩn 16 số)';
+
+                      final isValidBin = clean.startsWith('4') ||
+                          RegExp(r'^(5[1-5]|2[2-7])').hasMatch(clean) ||
+                          clean.startsWith('9704') ||
+                          RegExp(r'^(34|37)').hasMatch(clean) ||
+                          RegExp(r'^35').hasMatch(clean) ||
+                          RegExp(r'^(62|81)').hasMatch(clean);
+
+                      if (!isValidBin) {
+                        return 'Đầu số (BIN) không hợp lệ (Visa: 4, Mastercard: 5/2, Napas: 9704, Amex: 34/37, JCB: 35)';
+                      }
+                      return null;
+                    },
+                  ),
+                  if (detectedBrand.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Tự động nhận diện mạng thẻ: $detectedBrand',
+                          style: TextStyle(color: brandColor, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
               ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: numberController,
-                style: const TextStyle(color: Colors.white),
-                keyboardType: TextInputType.number,
-                maxLength: 19,
-                decoration: const InputDecoration(
-                  labelText: 'Số thẻ ngân hàng (12-19 chữ số, chuẩn 16 số)',
-                  labelStyle: TextStyle(color: Colors.white70),
-                  hintText: 'Ví dụ: 4111222233334444',
-                  hintStyle: TextStyle(color: Colors.white38),
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) {
-                  final clean = (v ?? '').replaceAll(RegExp(r'\s+'), '');
-                  if (clean.isEmpty) return 'Vui lòng nhập số thẻ ngân hàng';
-                  if (!RegExp(r'^\d+$').hasMatch(clean)) return 'Số thẻ chỉ được chứa chữ số';
-                  if (clean.length < 12 || clean.length > 19) return 'Số thẻ phải từ 12 đến 19 chữ số (chuẩn 16 số)';
-                  return null;
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Hủy', style: TextStyle(color: Colors.white54)),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (formKey.currentState!.validate()) {
+                    final cleanNumber = numberController.text.replaceAll(RegExp(r'\s+'), '');
+                    Navigator.pop(ctx);
+                    _addCardApi(nameController.text.trim(), cleanNumber);
+                  }
                 },
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black),
+                child: const Text('Thêm thẻ', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy', style: TextStyle(color: Colors.white54)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (formKey.currentState!.validate()) {
-                final cleanNumber = numberController.text.replaceAll(RegExp(r'\s+'), '');
-                Navigator.pop(ctx);
-                _addCardApi(nameController.text.trim(), cleanNumber);
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent),
-            child: const Text('Thêm thẻ'),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

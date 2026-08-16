@@ -21,9 +21,13 @@ router.post('/update-password', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    if (cleanCurrentPassword === cleanNewPassword) {
+      return res.status(400).json({ error: 'Mật khẩu mới không được trùng với mật khẩu hiện tại' });
+    }
+
     const isValid = await bcrypt.compare(cleanCurrentPassword, user.password);
     if (!isValid) {
-      return res.status(400).json({ error: 'Incorrect current password' });
+      return res.status(400).json({ error: 'Mật khẩu hiện tại không chính xác' });
     }
 
     if (cleanNewPassword.length < 6) {
@@ -36,10 +40,10 @@ router.post('/update-password', async (req, res) => {
       data: { password: hashedPassword },
     });
 
-    res.json({ message: 'Password updated successfully' });
+    res.json({ message: 'Cập nhật mật khẩu thành công' });
   } catch (error) {
     console.error('Error updating password:', error);
-    res.status(500).json({ error: 'Failed to update password' });
+    res.status(500).json({ error: 'Không thể cập nhật mật khẩu' });
   }
 });
 
@@ -55,6 +59,10 @@ router.post('/update-pin', async (req, res) => {
       return res.status(400).json({ error: 'Mã PIN mới phải gồm đúng 6 chữ số' });
     }
 
+    if (strCurrentPin && strCurrentPin === strNewPin) {
+      return res.status(400).json({ error: 'Mã PIN mới không được trùng với Mã PIN hiện tại' });
+    }
+
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -67,6 +75,10 @@ router.post('/update-pin', async (req, res) => {
       const isValidPin = await bcrypt.compare(strCurrentPin, user.pin);
       if (!isValidPin) {
         return res.status(400).json({ error: 'Mã PIN hiện tại không chính xác' });
+      }
+      const isSamePin = await bcrypt.compare(strNewPin, user.pin);
+      if (isSamePin) {
+        return res.status(400).json({ error: 'Mã PIN mới không được trùng với Mã PIN hiện tại' });
       }
     }
 

@@ -18,6 +18,27 @@ router.get('/', async (req, res) => {
   }
 });
 
+function validateBankCardNumber(cardNumber) {
+  const clean = cardNumber ? String(cardNumber).replace(/\s+/g, '') : '';
+  if (!/^\d{15,19}$/.test(clean)) {
+    return 'Số thẻ ngân hàng không hợp lệ (phải gồm từ 15 đến 19 chữ số theo chuẩn quốc tế)';
+  }
+
+  const isValidBin =
+    clean.startsWith('4') || // Visa
+    /^(5[1-5]|2[2-7])/.test(clean) || // Mastercard
+    clean.startsWith('9704') || // Napas
+    /^(34|37)/.test(clean) || // Amex
+    /^35(2[89]|[3-8][0-9])/.test(clean) || // JCB
+    /^(62|81)/.test(clean); // UnionPay
+
+  if (!isValidBin) {
+    return 'Đầu số thẻ (BIN) không hợp lệ (Visa bắt đầu bằng 4, Mastercard bằng 5/2, Napas bằng 9704, Amex 34/37, JCB 35)';
+  }
+
+  return null;
+}
+
 function validateCardInputs({ cardName, cardHolder, expiryDate, phone }) {
   if (cardName !== undefined && cardName !== null && String(cardName).trim().length > 0) {
     const cleanName = String(cardName).trim();
@@ -68,8 +89,9 @@ router.post('/', async (req, res) => {
     }
 
     const rawCardNumber = cardNumber ? String(cardNumber).replace(/\s+/g, '') : '4111222233339999';
-    if (!/^\d{12,19}$/.test(rawCardNumber)) {
-      return res.status(400).json({ error: 'Số thẻ ngân hàng không hợp lệ (phải từ 12 đến 19 chữ số)' });
+    const cardNumErr = validateBankCardNumber(rawCardNumber);
+    if (cardNumErr) {
+      return res.status(400).json({ error: cardNumErr });
     }
 
     // Auto-generate default card name with last 4 digits if not provided
@@ -81,6 +103,10 @@ router.post('/', async (req, res) => {
       defaultCardName = `Thẻ Mastercard (${last4})`;
     } else if (rawCardNumber.startsWith('9704')) {
       defaultCardName = `Thẻ Napas (${last4})`;
+    } else if (/^(34|37)/.test(rawCardNumber)) {
+      defaultCardName = `Thẻ Amex (${last4})`;
+    } else if (/^35/.test(rawCardNumber)) {
+      defaultCardName = `Thẻ JCB (${last4})`;
     }
 
     const finalCardName = (cardName && String(cardName).trim().length > 0)
