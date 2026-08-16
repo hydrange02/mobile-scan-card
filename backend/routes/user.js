@@ -23,6 +23,10 @@ router.post('/update-password', async (req, res) => {
       return res.status(400).json({ error: 'Incorrect current password' });
     }
 
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'Mật khẩu mới phải từ 6 ký tự trở lên' });
+    }
+
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await prisma.user.update({
       where: { id: user.id },
@@ -44,8 +48,8 @@ router.post('/update-pin', async (req, res) => {
     const strNewPin = newPin != null ? String(newPin).trim() : '';
     const strCurrentPin = currentPin != null ? String(currentPin).trim() : '';
 
-    if (!strNewPin || strNewPin.length < 4 || strNewPin.length > 6) {
-      return res.status(400).json({ error: 'Mã PIN mới phải từ 4-6 chữ số' });
+    if (!/^\d{6}$/.test(strNewPin)) {
+      return res.status(400).json({ error: 'Mã PIN mới phải gồm đúng 6 chữ số' });
     }
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -76,6 +80,34 @@ router.post('/update-pin', async (req, res) => {
   }
 });
 
+// Verify PIN for unlocking app or sensitive operations
+router.post('/verify-pin', async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { pin } = req.body;
+    const strPin = pin != null ? String(pin).trim() : '';
+
+    if (!/^\d{6}$/.test(strPin)) {
+      return res.status(400).json({ error: 'Vui lòng nhập Mã PIN gồm đúng 6 chữ số' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.pin) {
+      return res.status(400).json({ error: 'Tài khoản chưa cài đặt Mã PIN' });
+    }
+
+    const isValid = await bcrypt.compare(strPin, user.pin);
+    if (!isValid) {
+      return res.status(400).json({ error: 'Mã PIN bảo mật không chính xác' });
+    }
+
+    res.json({ success: true, message: 'Xác thực Mã PIN thành công' });
+  } catch (error) {
+    console.error('Error verifying pin:', error);
+    res.status(500).json({ error: 'Lỗi hệ thống khi xác thực Mã PIN' });
+  }
+});
+
 // Reset / Forgot PIN (via current account password)
 router.post('/reset-pin', async (req, res) => {
   try {
@@ -86,8 +118,8 @@ router.post('/reset-pin', async (req, res) => {
     if (!password || !strNewPin) {
       return res.status(400).json({ error: 'Vui lòng nhập mật khẩu tài khoản và Mã PIN mới' });
     }
-    if (strNewPin.length < 4 || strNewPin.length > 6) {
-      return res.status(400).json({ error: 'Mã PIN mới phải từ 4-6 chữ số' });
+    if (!/^\d{6}$/.test(strNewPin)) {
+      return res.status(400).json({ error: 'Mã PIN mới phải gồm đúng 6 chữ số' });
     }
 
     const user = await prisma.user.findUnique({ where: { id: userId } });

@@ -19,7 +19,10 @@ class NfcService {
       );
 
       // Read NDEF records if present
-      var records = await FlutterNfcKit.readNDEFRecords().catchError((_) => <NDEFRecord>[]);
+      List<dynamic> records = [];
+      try {
+        records = await FlutterNfcKit.readNDEFRecords();
+      } catch (_) {}
       await FlutterNfcKit.finish();
 
       String payloadText = '';

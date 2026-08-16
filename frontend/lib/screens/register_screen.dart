@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../services/api_config.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -30,9 +32,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    if (pin.length < 4 || pin.length > 6) {
+    if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mã PIN phải từ 4 đến 6 chữ số')),
+        const SnackBar(content: Text('Định dạng Email không hợp lệ (ví dụ: name@domain.com)')),
+      );
+      return;
+    }
+
+    if (!RegExp(r'^\d{6}$').hasMatch(pin)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mã PIN phải gồm đúng 6 chữ số (chỉ chứa số)')),
       );
       return;
     }
@@ -52,11 +61,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (response.statusCode == 201) {
         if (!mounted) return;
+        // Purge any lingering session from previous accounts
+        Provider.of<AuthProvider>(context, listen: false).logout();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đăng ký tài khoản thành công!'), backgroundColor: Colors.green),
+          const SnackBar(content: Text('Đăng ký tài khoản thành công! Vui lòng đăng nhập.'), backgroundColor: Colors.green),
         );
-        Navigator.pushReplacementNamed(context, '/login');
+        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
       } else {
+
         if (!mounted) return;
         final resData = jsonDecode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -67,7 +79,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

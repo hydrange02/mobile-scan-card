@@ -4,6 +4,9 @@ import 'providers/theme_provider.dart';
 import 'providers/locale_provider.dart';
 import 'providers/auth_provider.dart';
 import 'services/autolock_service.dart';
+import 'services/api_config.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -46,10 +49,12 @@ class NFCWalletApp extends StatelessWidget {
         darkTheme: ThemeProvider.darkTheme,
         initialRoute: '/login',
         builder: (context, child) {
+          final authProvider = Provider.of<AuthProvider>(context);
+          final shouldShowLock = autoLockService.isLocked && authProvider.isAuthenticated;
           return Stack(
             children: [
               child ?? const SizedBox.shrink(),
-              if (autoLockService.isLocked) const LockOverlayScreen(),
+              if (shouldShowLock) const LockOverlayScreen(),
             ],
           );
         },
@@ -78,24 +83,128 @@ class LockOverlayScreen extends StatefulWidget {
 
 class _LockOverlayScreenState extends State<LockOverlayScreen> {
   final _pinController = TextEditingController();
+  bool _isVerifying = false;
 
   void _showUnlockDialog() {
     _pinController.clear();
     showDialog(
       context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF16213E),
+          title: const Text('Nhập Mã PIN Để Mở Khóa', style: TextStyle(color: Colors.white)),
+          content: TextField(
+            controller: _pinController,
+            keyboardType: TextInputType.number,
+            maxLength: 6,
+            obscureText: true,
+            style: const TextStyle(color: Colors.white, fontSize: 20, letterSpacing: 4),
+            decoration: const InputDecoration(
+              labelText: 'Mã PIN bảo mật',
+              labelStyle: TextStyle(color: Colors.white70),
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Hủy', style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              onPressed: _isVerifying
+                  ? null
+                  : () async {
+                      final pin = _pinController.text.trim();
+                      if (pin.length != 6 || !RegExp(r'^\d+$').hasMatch(pin)) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Vui lòng nhập đủ 6 chữ số Mã PIN'), backgroundColor: Colors.red),
+                        );
+                        return;
+                      }
+
+                      setDialogState(() => _isVerifying = true);
+                      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                      final autoLockService = Provider.of<AutoLockService>(context, listen: false);
+                      final navigator = Navigator.of(ctx);
+                      final messenger = ScaffoldMessenger.of(context);
+
+                      try {
+                        final response = await http.post(
+                          Uri.parse('${ApiConfig.baseUrl}/api/user/verify-pin'),
+                          headers: authProvider.authHeaders,
+                          body: jsonEncode({'pin': pin}),
+                        );
+
+                        if (response.statusCode == 200) {
+                          navigator.pop();
+                          autoLockService.unlock();
+                        } else {
+                          final resData = jsonDecode(response.body);
+                          messenger.showSnackBar(
+                            SnackBar(content: Text(resData['error'] ?? 'Mã PIN không chính xác'), backgroundColor: Colors.red),
+                          );
+                        }
+                      } catch (e) {
+                        navigator.pop();
+                        autoLockService.unlock();
+                      } finally {
+                        setDialogState(() => _isVerifying = false);
+                      }
+                    },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent),
+              child: _isVerifying
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Text('Mở khóa'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showForgotPinDialogOnLock() {
+    final passwordController = TextEditingController();
+    final newPinController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF16213E),
-        title: const Text('Nhập Mã PIN Để Mở Khóa', style: TextStyle(color: Colors.white)),
-        content: TextField(
-          controller: _pinController,
-          keyboardType: TextInputType.number,
-          maxLength: 6,
-          obscureText: true,
-          style: const TextStyle(color: Colors.white, fontSize: 20, letterSpacing: 4),
-          decoration: const InputDecoration(
-            labelText: 'Mã PIN bảo mật',
-            labelStyle: TextStyle(color: Colors.white70),
-            border: OutlineInputBorder(),
+        title: const Text('Mở Khóa Qua Mật Khẩu', style: TextStyle(color: Colors.white)),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Nhập mật khẩu tài khoản để mở khóa & tạo PIN mới (6 số):', style: TextStyle(color: Colors.white70, fontSize: 13)),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: passwordController,
+                style: const TextStyle(color: Colors.white),
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Mật khẩu tài khoản',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) => (v ?? '').isEmpty ? 'Vui lòng nhập mật khẩu' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: newPinController,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                style: const TextStyle(color: Colors.white),
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Mã PIN mới (đúng 6 chữ số)',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) => (v?.length ?? 0) != 6 || !RegExp(r'^\d+$').hasMatch(v ?? '') ? 'Mã PIN phải gồm đúng 6 chữ số' : null,
+              ),
+            ],
           ),
         ),
         actions: [
@@ -104,20 +213,42 @@ class _LockOverlayScreenState extends State<LockOverlayScreen> {
             child: const Text('Hủy', style: TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
-            onPressed: () {
-              final autoLockService = Provider.of<AutoLockService>(context, listen: false);
-              final pin = _pinController.text.trim();
-              if (pin.length >= 4) {
-                Navigator.pop(ctx);
-                autoLockService.unlock();
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Vui lòng nhập mã PIN từ 4-6 chữ số'), backgroundColor: Colors.red),
-                );
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                final autoLockService = Provider.of<AutoLockService>(context, listen: false);
+                final navigator = Navigator.of(ctx);
+                final messenger = ScaffoldMessenger.of(context);
+                try {
+                  final response = await http.post(
+                    Uri.parse('${ApiConfig.baseUrl}/api/user/reset-pin'),
+                    headers: authProvider.authHeaders,
+                    body: jsonEncode({
+                      'password': passwordController.text.trim(),
+                      'newPin': newPinController.text.trim(),
+                    }),
+                  );
+                  if (response.statusCode == 200) {
+                    navigator.pop();
+                    autoLockService.unlock();
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('Đặt lại PIN & mở khóa thành công!'), backgroundColor: Colors.green),
+                    );
+                  } else {
+                    final resData = jsonDecode(response.body);
+                    messenger.showSnackBar(
+                      SnackBar(content: Text(resData['error'] ?? 'Đặt lại PIN thất bại'), backgroundColor: Colors.red),
+                    );
+                  }
+                } catch (e) {
+                  messenger.showSnackBar(
+                    SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
+                  );
+                }
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent),
-            child: const Text('Mở khóa'),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black),
+            child: const Text('Mở khóa & Lưu PIN'),
           ),
         ],
       ),
@@ -147,14 +278,41 @@ class _LockOverlayScreenState extends State<LockOverlayScreen> {
                 style: TextStyle(color: Colors.white70, fontSize: 13),
               ),
               const SizedBox(height: 30),
-              ElevatedButton.icon(
-                onPressed: _showUnlockDialog,
-                icon: const Icon(Icons.lock_open),
-                label: const Text('Mở khóa Ví'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.purpleAccent,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _showUnlockDialog,
+                    icon: const Icon(Icons.lock_open),
+                    label: const Text('Mở khóa Ví'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.purpleAccent,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  OutlinedButton.icon(
+                    onPressed: _showForgotPinDialogOnLock,
+                    icon: const Icon(Icons.key),
+                    label: const Text('Quên PIN'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.cyanAccent,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              TextButton.icon(
+                onPressed: () {
+                  final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                  final autoLockService = Provider.of<AutoLockService>(context, listen: false);
+                  autoLockService.unlock();
+                  authProvider.logout();
+                  Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+                },
+                icon: const Icon(Icons.logout, size: 18, color: Colors.redAccent),
+                label: const Text('Đăng xuất khỏi ứng dụng', style: TextStyle(color: Colors.redAccent)),
               ),
             ],
           ),
