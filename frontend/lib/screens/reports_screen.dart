@@ -41,9 +41,19 @@ class _ReportsScreenState extends State<ReportsScreen> {
           _allTransactions = json.decode(response.body);
           _isLoading = false;
         });
+      } else if (mounted) {
+        setState(() {
+          _allTransactions = [];
+          _isLoading = false;
+        });
       }
     } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _allTransactions = [];
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -69,7 +79,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
             final lastMonthDate = DateTime(now.year, now.month - 1, 1);
             if (txDate.year != lastMonthDate.year || txDate.month != lastMonthDate.month) return false;
           } else if (_selectedTimeFilter == 'Last7Days') {
-            if (txDate.isBefore(now.subtract(const Duration(days: 7)))) return false;
+            final sevenDaysAgo = now.subtract(const Duration(days: 7));
+            if (txDate.isBefore(sevenDaysAgo) || txDate.isAfter(now)) return false;
           }
         }
       }
@@ -224,7 +235,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       }
     }
 
-    double avgAmount = totalCount > 0 ? (totalExpense + totalIncome) / totalCount : 0.0;
+    double avgAmount = successCount > 0 ? (totalExpense + totalIncome) / successCount : 0.0;
     double successRate = totalCount > 0 ? (successCount / totalCount) * 100 : 100.0;
 
     return ListView(
@@ -413,7 +424,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         // -------------------------------------------------------------
         // Dropdown 1: Time Filter
         DropdownButtonFormField<String>(
-          value: _selectedTimeFilter,
+          initialValue: _selectedTimeFilter,
           dropdownColor: const Color(0xFF16213E),
           style: const TextStyle(color: Colors.white, fontSize: 12),
           decoration: InputDecoration(
@@ -442,7 +453,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           children: [
             Expanded(
               child: DropdownButtonFormField<String>(
-                value: _selectedStatus,
+                initialValue: _selectedStatus,
                 dropdownColor: const Color(0xFF16213E),
                 style: const TextStyle(color: Colors.white, fontSize: 12),
                 decoration: InputDecoration(
@@ -466,7 +477,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             const SizedBox(width: 10),
             Expanded(
               child: DropdownButtonFormField<String>(
-                value: _selectedCardType,
+                initialValue: _selectedCardType,
                 dropdownColor: const Color(0xFF16213E),
                 style: const TextStyle(color: Colors.white, fontSize: 12),
                 decoration: InputDecoration(

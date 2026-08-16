@@ -33,7 +33,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _isLoadingPassword = true);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
-    final userId = authProvider.user?['id'];
 
     try {
       final response = await http.post(
@@ -49,7 +48,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(localeProvider.getText('update_password') + ' thành công!'),
+            content: Text('${localeProvider.getText('update_password')} thành công!'),
             backgroundColor: Colors.green,
           ),
         );
@@ -74,7 +73,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     setState(() => _isLoadingPin = true);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final userId = authProvider.user?['id'];
 
     try {
       final response = await http.post(
@@ -146,11 +144,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 style: const TextStyle(color: Colors.white),
                 obscureText: true,
                 decoration: const InputDecoration(
-                  labelText: 'Mã PIN mới (6 chữ số)',
+                  labelText: 'Mã PIN mới (bắt buộc 6 chữ số)',
                   labelStyle: TextStyle(color: Colors.white70),
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) => (v?.length ?? 0) < 4 ? 'Mã PIN từ 4-6 chữ số' : null,
+                validator: (v) => (v?.length ?? 0) != 6 || !RegExp(r'^\d+$').hasMatch(v ?? '') ? 'Mã PIN phải gồm đúng 6 chữ số' : null,
               ),
             ],
           ),
@@ -164,7 +162,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onPressed: () async {
               if (resetFormKey.currentState!.validate()) {
                 final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                final userId = authProvider.user?['id'];
+                final navigator = Navigator.of(ctx);
+                final messenger = ScaffoldMessenger.of(context);
                 try {
                   final response = await http.post(
                     Uri.parse('${ApiConfig.baseUrl}/api/user/reset-pin'),
@@ -174,23 +173,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       'newPin': resetNewPinController.text.trim(),
                     }),
                   );
-                  Navigator.pop(ctx);
+                  navigator.pop();
                   if (response.statusCode == 200) {
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       const SnackBar(content: Text('Đặt lại Mã PIN thành công!'), backgroundColor: Colors.green),
                     );
                   } else {
                     final resData = jsonDecode(response.body);
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       SnackBar(content: Text(resData['error'] ?? 'Đặt lại PIN thất bại'), backgroundColor: Colors.red),
                     );
                   }
                 } catch (e) {
-                  Navigator.pop(ctx);
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  navigator.pop();
+                  messenger.showSnackBar(
                     SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
                   );
                 }
@@ -350,7 +346,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           border: const OutlineInputBorder(),
                         ),
                         obscureText: true,
-                        validator: (v) => (v?.length ?? 0) < 4 ? localeProvider.getText('pin_required') : null,
+                        validator: (v) => (v?.length ?? 0) != 6 || !RegExp(r'^\d+$').hasMatch(v ?? '') ? localeProvider.getText('pin_required') : null,
                       ),
                       const SizedBox(height: 16),
                       SizedBox(
@@ -383,7 +379,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               onChanged: (val) => setState(() => _notificationsEnabled = val),
             ),
             DropdownButtonFormField<String>(
-              value: localeProvider.isVietnamese ? 'vi' : 'en',
+              initialValue: localeProvider.isVietnamese ? 'vi' : 'en',
               dropdownColor: const Color(0xFF16213E),
               decoration: InputDecoration(
                 labelText: localeProvider.getText('language'),
@@ -406,7 +402,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 onPressed: () {
                   final authProvider = Provider.of<AuthProvider>(context, listen: false);
                   authProvider.logout();
-                  Navigator.pushReplacementNamed(context, '/login');
+                  Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
                 },
                 icon: const Icon(Icons.logout),
                 label: Text(localeProvider.getText('logout')),

@@ -46,19 +46,40 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
           _isLoadingCards = false;
           if (list.isNotEmpty) {
             _selectedCard = list.firstWhere((c) => c['isDefault'] == true, orElse: () => list.first);
+          } else {
+            _selectedCard = null;
           }
+        });
+      } else if (mounted) {
+        setState(() {
+          _cards = [];
+          _selectedCard = null;
+          _isLoadingCards = false;
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _isLoadingCards = false);
+      if (mounted) {
+        setState(() {
+          _cards = [];
+          _selectedCard = null;
+          _isLoadingCards = false;
+        });
+      }
     }
   }
 
   Future<void> _processPaymentApi({required String method}) async {
+    if (_selectedCard == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng chọn hoặc thêm thẻ thanh toán vào ví trước!'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
     final double amount = double.tryParse(_amountController.text.trim()) ?? 0.0;
     if (amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập số tiền thanh toán hợp lệ')),
+        const SnackBar(content: Text('Vui lòng nhập số tiền thanh toán hợp lệ (lớn hơn 0)')),
       );
       return;
     }
@@ -97,6 +118,196 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
     } finally {
       if (mounted) setState(() => _isProcessingPayment = false);
     }
+  }
+
+  Future<void> _verifyPinBeforePayment({
+    required String method,
+    required VoidCallback onSuccess,
+  }) async {
+    if (_selectedCard == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng chọn hoặc thêm thẻ thanh toán vào ví trước!'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    final double amount = double.tryParse(_amountController.text.trim()) ?? 0.0;
+    if (amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng nhập số tiền thanh toán hợp lệ (lớn hơn 0)')),
+      );
+      return;
+    }
+
+    HapticService.selectionFeedback();
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    bool hasPin = false;
+    try {
+      final res = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/user/profile'),
+        headers: authProvider.authHeaders,
+      );
+      if (res.statusCode == 200) {
+        final profile = json.decode(res.body);
+        hasPin = profile['hasPin'] == true;
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+
+    if (!hasPin) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF16213E),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: const [
+              Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 28),
+              SizedBox(width: 8),
+              Text('Cần Cập Nhật PIN', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: const Text(
+            'Tài khoản của bạn chưa cài đặt Mã PIN bảo mật.\n\nVui lòng cập nhật Mã PIN trong Cài đặt trước khi thực hiện giao dịch thanh toán!',
+            style: TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Đóng', style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.pushNamed(context, '/settings');
+              },
+              icon: const Icon(Icons.settings, size: 18),
+              label: const Text('Cập nhật PIN ngay'),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    final pinController = TextEditingController();
+    final pinFormKey = GlobalKey<FormState>();
+    bool isVerifyingPin = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          backgroundColor: const Color(0xFF16213E),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Column(
+            children: [
+              const Icon(Icons.shield_outlined, color: Colors.cyanAccent, size: 40),
+              const SizedBox(height: 8),
+              const Text(
+                'Xác Nhận Mã PIN Thanh Toán',
+                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Số tiền: \$${amount.toStringAsFixed(2)} - ${_selectedCard?['cardName'] ?? ''}',
+                style: const TextStyle(color: Colors.cyanAccent, fontSize: 13),
+              ),
+            ],
+          ),
+          content: Form(
+            key: pinFormKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Nhập Mã PIN bảo mật (6 chữ số) để xác nhận thanh toán:',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: pinController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  obscureText: true,
+                  autofocus: true,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white, fontSize: 24, letterSpacing: 8, fontWeight: FontWeight.bold),
+                  decoration: InputDecoration(
+                    hintText: '******',
+                    hintStyle: const TextStyle(color: Colors.white24, letterSpacing: 8),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.05),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  validator: (v) => (v?.length ?? 0) != 6 || !RegExp(r'^\d+$').hasMatch(v ?? '')
+                      ? 'Mã PIN phải gồm đúng 6 chữ số'
+                      : null,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Hủy bỏ', style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              onPressed: isVerifyingPin
+                  ? null
+                  : () async {
+                      if (pinFormKey.currentState!.validate()) {
+                        setModalState(() => isVerifyingPin = true);
+                        try {
+                          final response = await http.post(
+                            Uri.parse('${ApiConfig.baseUrl}/api/user/verify-pin'),
+                            headers: authProvider.authHeaders,
+                            body: jsonEncode({'pin': pinController.text.trim()}),
+                          );
+                          if (response.statusCode == 200) {
+                            if (context.mounted) Navigator.pop(ctx);
+                            onSuccess();
+                          } else {
+                            final resData = jsonDecode(response.body);
+                            if (context.mounted) {
+                              HapticService.errorFeedback();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(resData['error'] ?? 'Mã PIN không chính xác'),
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                              );
+                            }
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Lỗi xác thực PIN: $e'), backgroundColor: Colors.redAccent),
+                            );
+                          }
+                        } finally {
+                          setModalState(() => isVerifyingPin = false);
+                        }
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.cyanAccent,
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: isVerifyingPin
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
+                  : const Text('Xác Nhận & Thanh Toán', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _startNfcPayment() async {
@@ -232,7 +443,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         _isLoadingCards
             ? const LinearProgressIndicator(color: Colors.purpleAccent)
             : DropdownButtonFormField<Map<String, dynamic>>(
-                value: _selectedCard,
+                initialValue: _selectedCard,
                 dropdownColor: const Color(0xFF16213E),
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
@@ -273,12 +484,16 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: ['10.00', '25.00', '50.00', '100.00'].map((amt) {
+            final double currentVal = double.tryParse(_amountController.text.trim()) ?? -1.0;
+            final double chipVal = double.tryParse(amt) ?? -2.0;
+            final bool isSelected = currentVal == chipVal;
+
             return ChoiceChip(
               label: Text('\$$amt'),
-              selected: _amountController.text == amt,
+              selected: isSelected,
               onSelected: (_) => setState(() => _amountController.text = amt),
               selectedColor: Colors.purpleAccent,
-              labelStyle: TextStyle(color: _amountController.text == amt ? Colors.white : Colors.white70),
+              labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.white70),
             );
           }).toList(),
         ),
@@ -304,7 +519,12 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         SizedBox(
           height: 56,
           child: ElevatedButton.icon(
-            onPressed: _isProcessingPayment ? null : _startNfcPayment,
+            onPressed: _isProcessingPayment
+                ? null
+                : () => _verifyPinBeforePayment(
+                      method: 'Chạm NFC 1-Chạm',
+                      onSuccess: _startNfcPayment,
+                    ),
             icon: const Icon(Icons.nfc, size: 28),
             label: const Text('CHẠM THẺ NFC ĐỂ THANH TOÁN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             style: ElevatedButton.styleFrom(
@@ -371,7 +591,10 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         SizedBox(
           height: 52,
           child: ElevatedButton.icon(
-            onPressed: () => _processPaymentApi(method: 'Quét Mã QR'),
+            onPressed: () => _verifyPinBeforePayment(
+              method: 'Quét Mã QR',
+              onSuccess: () => _processPaymentApi(method: 'Quét Mã QR'),
+            ),
             icon: const Icon(Icons.qr_code_scanner),
             label: const Text('QUÉT MÃ QR KHÁCH HÀNG / CỬA HÀNG'),
             style: ElevatedButton.styleFrom(

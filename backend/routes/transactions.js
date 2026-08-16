@@ -53,26 +53,32 @@ router.post('/', async (req, res) => {
       }
     }
 
-    const txAmount = parseFloat(amount) || 0.0;
+    const txAmount = parseFloat(amount);
+    if (isNaN(txAmount) || txAmount <= 0) {
+      return res.status(400).json({ error: 'Số tiền giao dịch phải lớn hơn 0' });
+    }
     const isExp = isExpense !== undefined ? Boolean(isExpense) : true;
     const txStatus = status || 'Success';
 
-    // Verify card ownership and balance if card is attached
-    let targetCard = null;
-    if (targetCardId) {
-      targetCard = await prisma.card.findFirst({ where: { id: targetCardId, userId } });
-      if (!targetCard) {
-        return res.status(404).json({ error: 'Thẻ thanh toán không tồn tại hoặc không hợp lệ' });
-      }
-
-      // Check balance for expenses
-      if (isExp && txStatus === 'Success' && targetCard.balance < txAmount) {
-        return res.status(400).json({ error: 'Số dư thẻ không đủ để thực hiện giao dịch' });
-      }
-    }
-
-    // Atomic DB transaction for data integrity
+    // Atomic DB transaction for data integrity and race condition prevention
     const result = await prisma.$transaction(async (txPrisma) => {
+      let targetCard = null;
+      if (targetCardId) {
+        targetCard = await txPrisma.card.findFirst({ where: { id: targetCardId, userId } });
+        if (!targetCard) {
+          throw new Error('Thẻ thanh toán không tồn tại hoặc không hợp lệ');
+        }
+
+        // Check balance for expenses inside transaction with 2-decimal precision
+        const roundedBalance = Math.round(targetCard.balance * 100);
+        const roundedAmount = Math.round(txAmount * 100);
+        if (isExp && txStatus === 'Success' && roundedBalance < roundedAmount) {
+          throw new Error('Số dư thẻ không đủ để thực hiện giao dịch');
+        }
+      } else if (isExp) {
+        throw new Error('Vui lòng thêm hoặc chọn thẻ thanh toán trước khi thực hiện giao dịch');
+      }
+
       // 1. Create transaction record
       const newTx = await txPrisma.transaction.create({
         data: {
@@ -102,7 +108,7 @@ router.post('/', async (req, res) => {
     res.status(201).json(result);
   } catch (error) {
     console.error('Error creating transaction:', error);
-    res.status(400).json({ error: 'Failed to create transaction', details: error.message });
+    res.status(400).json({ error: error.message || 'Failed to create transaction' });
   }
 });
 

@@ -24,20 +24,30 @@ router.post('/', async (req, res) => {
     const userId = req.user.userId;
     const { cardName, cardNumber, cardHolder, expiryDate, phone, balance } = req.body;
 
-    const existingCount = await prisma.card.count({ where: { userId } });
-    const isFirstCard = existingCount === 0;
+    const rawCardNumber = cardNumber ? String(cardNumber).replace(/\s+/g, '') : '4111222233339999';
+    if (!/^\d{12,19}$/.test(rawCardNumber)) {
+      return res.status(400).json({ error: 'Số thẻ ngân hàng không hợp lệ (phải từ 12 đến 19 chữ số)' });
+    }
 
-    const card = await prisma.card.create({
-      data: {
-        userId,
-        cardName: cardName || 'Thẻ NFC Mới',
-        cardNumber: cardNumber || '4111222233339999',
-        cardHolder: cardHolder || 'Chủ Thẻ NFC',
-        expiryDate: expiryDate || '12/28',
-        phone: phone || '',
-        balance: balance !== undefined ? parseFloat(balance) : 0.0,
-        isDefault: isFirstCard
-      }
+    const parsedBalance = balance !== undefined ? parseFloat(balance) : 0.0;
+    const safeBalance = isNaN(parsedBalance) || parsedBalance < 0 ? 0.0 : Math.round(parsedBalance * 100) / 100;
+
+    const card = await prisma.$transaction(async (txPrisma) => {
+      const existingCount = await txPrisma.card.count({ where: { userId } });
+      const isFirstCard = existingCount === 0;
+
+      return await txPrisma.card.create({
+        data: {
+          userId,
+          cardName: cardName || 'Thẻ NFC Mới',
+          cardNumber: rawCardNumber,
+          cardHolder: cardHolder || 'Chủ Thẻ NFC',
+          expiryDate: expiryDate || '12/28',
+          phone: phone || '',
+          balance: safeBalance,
+          isDefault: isFirstCard
+        }
+      });
     });
     res.status(201).json(card);
   } catch (error) {
@@ -76,13 +86,20 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Card not found or access denied' });
     }
 
+    if (expiryDate !== undefined && expiryDate.toString().trim().length > 0) {
+      const cleanExpiry = expiryDate.toString().trim();
+      if (!/^(0[1-9]|1[0-2])\/?([0-9]{2})$/.test(cleanExpiry)) {
+        return res.status(400).json({ error: 'Ngày hết hạn thẻ phải theo định dạng MM/YY (ví dụ: 12/28)' });
+      }
+    }
+
     const updatedCard = await prisma.card.update({
       where: { id: cardId },
       data: {
-        ...(cardName && { cardName }),
-        ...(cardHolder !== undefined && { cardHolder }),
-        ...(expiryDate !== undefined && { expiryDate }),
-        ...(phone !== undefined && { phone }),
+        ...(cardName !== undefined && { cardName: cardName.trim() }),
+        ...(cardHolder !== undefined && { cardHolder: cardHolder.trim() }),
+        ...(expiryDate !== undefined && { expiryDate: expiryDate.trim() }),
+        ...(phone !== undefined && { phone: phone.trim() }),
       }
     });
 
@@ -102,16 +119,18 @@ router.put('/:id/default', async (req, res) => {
       return res.status(404).json({ error: 'Card not found or access denied' });
     }
 
-    // Unset current default cards for user
-    await prisma.card.updateMany({
-      where: { userId },
-      data: { isDefault: false }
-    });
+    const updated = await prisma.$transaction(async (txPrisma) => {
+      // 1. Unset current default cards for user
+      await txPrisma.card.updateMany({
+        where: { userId },
+        data: { isDefault: false }
+      });
 
-    // Set target card as default
-    const updated = await prisma.card.update({
-      where: { id: cardId },
-      data: { isDefault: true }
+      // 2. Set target card as default
+      return await txPrisma.card.update({
+        where: { id: cardId },
+        data: { isDefault: true }
+      });
     });
 
     res.json(updated);
@@ -132,18 +151,20 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Card not found or access denied' });
     }
 
-    await prisma.card.delete({ where: { id: cardId } });
+    await prisma.$transaction(async (txPrisma) => {
+      await txPrisma.card.delete({ where: { id: cardId } });
 
-    // If deleted card was default, set first remaining card as default (if any remain)
-    if (targetCard.isDefault) {
-      const firstCard = await prisma.card.findFirst({ where: { userId } });
-      if (firstCard) {
-        await prisma.card.update({
-          where: { id: firstCard.id },
-          data: { isDefault: true }
-        });
+      // If deleted card was default, set first remaining card as default (if any remain)
+      if (targetCard.isDefault) {
+        const firstCard = await txPrisma.card.findFirst({ where: { userId } });
+        if (firstCard) {
+          await txPrisma.card.update({
+            where: { id: firstCard.id },
+            data: { isDefault: true }
+          });
+        }
       }
-    }
+    });
 
     res.status(204).send();
   } catch (error) {

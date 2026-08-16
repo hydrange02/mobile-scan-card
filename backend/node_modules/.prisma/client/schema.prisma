@@ -12,6 +12,11 @@ model User {
   username     String
   email        String        @unique
   password     String
+  pin          String?
+  fullName     String?
+  phone        String?
+  address      String?
+  dob          String?
   cards        Card[]
   transactions Transaction[]
   createdAt    DateTime      @default(now())
@@ -23,6 +28,10 @@ model Card {
   user         User          @relation(fields: [userId], references: [id])
   cardName     String
   cardNumber   String
+  cardHolder   String?
+  expiryDate   String?
+  phone        String?
+  balance      Float         @default(0.0)
   isDefault    Boolean       @default(false)
   transactions Transaction[]
   createdAt    DateTime      @default(now())

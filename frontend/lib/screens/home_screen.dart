@@ -46,9 +46,20 @@ class _HomeScreenState extends State<HomeScreen> {
           cards = json.decode(response.body);
           isLoading = false;
         });
+      } else {
+        if (!mounted) return;
+        setState(() {
+          cards = [];
+          isLoading = false;
+        });
       }
     } catch (e) {
-      if (mounted) setState(() => isLoading = false);
+      if (mounted) {
+        setState(() {
+          cards = [];
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -63,8 +74,14 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           recentTransactions = json.decode(response.body);
         });
+      } else if (mounted) {
+        setState(() {
+          recentTransactions = [];
+        });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() => recentTransactions = []);
+    }
   }
 
   String _formatDate(String? rawDate) {

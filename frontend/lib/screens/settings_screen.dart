@@ -21,7 +21,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _importController = TextEditingController();
 
   Map<String, dynamic>? _userProfile;
-  bool _isLoadingProfile = true;
 
   @override
   void initState() {
@@ -39,11 +38,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (response.statusCode == 200 && mounted) {
         setState(() {
           _userProfile = json.decode(response.body);
-          _isLoadingProfile = false;
+        });
+      } else if (mounted) {
+        setState(() {
+          _userProfile = null;
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _isLoadingProfile = false);
+      if (mounted) setState(() => _userProfile = null);
     }
   }
 
@@ -200,7 +202,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () async {
               if (formKey.currentState!.validate()) {
                 final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                final userId = authProvider.user?['id'];
+                final navigator = Navigator.of(ctx);
+                final messenger = ScaffoldMessenger.of(context);
                 try {
                   final response = await http.post(
                     Uri.parse('${ApiConfig.baseUrl}/api/user/update-password'),
@@ -210,24 +213,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       'newPassword': newPassController.text.trim(),
                     }),
                   );
-                  Navigator.pop(ctx);
+                  navigator.pop();
                   if (response.statusCode == 200) {
-                    if (!mounted) return;
                     HapticService.successFeedback();
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       const SnackBar(content: Text('Đổi mật khẩu thành công!'), backgroundColor: Colors.green),
                     );
                   } else {
                     final resData = jsonDecode(response.body);
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       SnackBar(content: Text(resData['error'] ?? 'Đổi mật khẩu thất bại'), backgroundColor: Colors.red),
                     );
                   }
                 } catch (e) {
-                  Navigator.pop(ctx);
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  navigator.pop();
+                  messenger.showSnackBar(
                     SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
                   );
                 }
@@ -277,11 +277,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: const TextStyle(color: Colors.white),
                 obscureText: true,
                 decoration: const InputDecoration(
-                  labelText: 'Mã PIN mới (4-6 chữ số)',
+                  labelText: 'Mã PIN mới (bắt buộc 6 chữ số)',
                   labelStyle: TextStyle(color: Colors.white70),
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) => (v?.length ?? 0) < 4 ? 'Mã PIN từ 4 đến 6 chữ số' : null,
+                validator: (v) => (v?.length ?? 0) != 6 || !RegExp(r'^\d+$').hasMatch(v ?? '') ? 'Mã PIN phải gồm đúng 6 chữ số' : null,
               ),
             ],
           ),
@@ -295,7 +295,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () async {
               if (formKey.currentState!.validate()) {
                 final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                final userId = authProvider.user?['id'];
+                final navigator = Navigator.of(ctx);
+                final messenger = ScaffoldMessenger.of(context);
                 try {
                   final response = await http.post(
                     Uri.parse('${ApiConfig.baseUrl}/api/user/update-pin'),
@@ -305,24 +306,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       'newPin': newPinController.text.trim(),
                     }),
                   );
-                  Navigator.pop(ctx);
+                  navigator.pop();
                   if (response.statusCode == 200) {
-                    if (!mounted) return;
                     HapticService.successFeedback();
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       const SnackBar(content: Text('Đổi Mã PIN thành công!'), backgroundColor: Colors.green),
                     );
                   } else {
                     final resData = jsonDecode(response.body);
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       SnackBar(content: Text(resData['error'] ?? 'Đổi PIN thất bại'), backgroundColor: Colors.red),
                     );
                   }
                 } catch (e) {
-                  Navigator.pop(ctx);
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  navigator.pop();
+                  messenger.showSnackBar(
                     SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
                   );
                 }
@@ -373,11 +371,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: const TextStyle(color: Colors.white),
                 obscureText: true,
                 decoration: const InputDecoration(
-                  labelText: 'Mã PIN mới (4-6 chữ số)',
+                  labelText: 'Mã PIN mới (bắt buộc 6 chữ số)',
                   labelStyle: TextStyle(color: Colors.white70),
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) => (v?.length ?? 0) < 4 ? 'Mã PIN từ 4 đến 6 chữ số' : null,
+                validator: (v) => (v?.length ?? 0) != 6 || !RegExp(r'^\d+$').hasMatch(v ?? '') ? 'Mã PIN phải gồm đúng 6 chữ số' : null,
               ),
             ],
           ),
@@ -391,7 +389,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () async {
               if (formKey.currentState!.validate()) {
                 final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                final userId = authProvider.user?['id'];
+                final navigator = Navigator.of(ctx);
+                final messenger = ScaffoldMessenger.of(context);
                 try {
                   final response = await http.post(
                     Uri.parse('${ApiConfig.baseUrl}/api/user/reset-pin'),
@@ -401,24 +400,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       'newPin': newPinController.text.trim(),
                     }),
                   );
-                  Navigator.pop(ctx);
+                  navigator.pop();
                   if (response.statusCode == 200) {
-                    if (!mounted) return;
                     HapticService.successFeedback();
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       const SnackBar(content: Text('Đặt lại Mã PIN thành công!'), backgroundColor: Colors.green),
                     );
                   } else {
                     final resData = jsonDecode(response.body);
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       SnackBar(content: Text(resData['error'] ?? 'Đặt lại PIN thất bại'), backgroundColor: Colors.red),
                     );
                   }
                 } catch (e) {
-                  Navigator.pop(ctx);
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  navigator.pop();
+                  messenger.showSnackBar(
                     SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
                   );
                 }
@@ -472,19 +468,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               final cards = BackupService.importEncryptedCards(_importController.text.trim());
               Navigator.pop(ctx);
-              if (cards != null) {
-                HapticService.successFeedback();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Successfully restored ${cards.length} cards!')),
-                );
+              if (cards != null && cards.isNotEmpty) {
+                final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                int count = 0;
+                for (var card in cards) {
+                  try {
+                    final res = await http.post(
+                      Uri.parse('${ApiConfig.baseUrl}/api/cards'),
+                      headers: authProvider.authHeaders,
+                      body: json.encode({
+                        'cardName': card['cardName'] ?? 'Thẻ Khôi Phục',
+                        'cardNumber': card['cardNumber'] ?? '4111222233339999',
+                      }),
+                    );
+                    if (res.statusCode == 201) count++;
+                  } catch (_) {}
+                }
+                if (context.mounted) {
+                  HapticService.successFeedback();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Successfully restored $count cards to server!'), backgroundColor: Colors.green),
+                  );
+                }
               } else {
-                HapticService.errorFeedback();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Invalid or corrupted AES backup data.')),
-                );
+                if (context.mounted) {
+                  HapticService.errorFeedback();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Invalid or corrupted AES backup data.'), backgroundColor: Colors.red),
+                  );
+                }
               }
             },
             child: const Text('Import'),
@@ -614,7 +629,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: const Icon(Icons.pin, color: Colors.white, size: 18),
                 ),
                 title: Text(localeProvider.getText('change_pin'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                subtitle: const Text('Đổi Mã PIN bảo mật 4-6 chữ số', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                subtitle: const Text('Đổi Mã PIN bảo mật 6 chữ số', style: TextStyle(color: Colors.white54, fontSize: 12)),
                 trailing: const Icon(Icons.chevron_right, color: Colors.white54),
                 onTap: _showChangePinDialog,
               ),
@@ -740,7 +755,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: OutlinedButton.icon(
             onPressed: () {
               authProvider.logout();
-              Navigator.pushReplacementNamed(context, '/login');
+              Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
             },
             icon: const Icon(Icons.logout),
             label: Text(localeProvider.getText('logout')),

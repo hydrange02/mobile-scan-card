@@ -14,11 +14,19 @@ router.post('/register', async (req, res) => {
     if (!username || !email || !password || !strPin) {
       return res.status(400).json({ error: 'All fields including PIN are required' });
     }
-    if (strPin.length < 4 || strPin.length > 6) {
-      return res.status(400).json({ error: 'PIN must be between 4 and 6 digits' });
+    if (!/^\d{6}$/.test(strPin)) {
+      return res.status(400).json({ error: 'Mã PIN bảo mật phải gồm đúng 6 chữ số' });
     }
     const cleanEmail = email.trim().toLowerCase();
     const cleanUsername = username.trim();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return res.status(400).json({ error: 'Định dạng email không hợp lệ' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Mật khẩu phải từ 6 ký tự trở lên' });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const hashedPin = await bcrypt.hash(strPin, 10);
     const user = await prisma.user.create({

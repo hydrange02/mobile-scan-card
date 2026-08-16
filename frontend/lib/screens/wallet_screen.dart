@@ -38,9 +38,19 @@ class _WalletScreenState extends State<WalletScreen> {
           _cards = json.decode(response.body);
           _isLoading = false;
         });
+      } else if (mounted) {
+        setState(() {
+          _cards = [];
+          _isLoading = false;
+        });
       }
     } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _cards = [];
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -204,12 +214,21 @@ class _WalletScreenState extends State<WalletScreen> {
                 controller: numberController,
                 style: const TextStyle(color: Colors.white),
                 keyboardType: TextInputType.number,
+                maxLength: 19,
                 decoration: const InputDecoration(
-                  labelText: 'Số thẻ (16 chữ số)',
+                  labelText: 'Số thẻ ngân hàng (12-19 chữ số, chuẩn 16 số)',
                   labelStyle: TextStyle(color: Colors.white70),
+                  hintText: 'Ví dụ: 4111222233334444',
+                  hintStyle: TextStyle(color: Colors.white38),
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) => (v?.length ?? 0) < 4 ? 'Vui lòng nhập ít nhất 4 số' : null,
+                validator: (v) {
+                  final clean = (v ?? '').replaceAll(RegExp(r'\s+'), '');
+                  if (clean.isEmpty) return 'Vui lòng nhập số thẻ ngân hàng';
+                  if (!RegExp(r'^\d+$').hasMatch(clean)) return 'Số thẻ chỉ được chứa chữ số';
+                  if (clean.length < 12 || clean.length > 19) return 'Số thẻ phải từ 12 đến 19 chữ số (chuẩn 16 số)';
+                  return null;
+                },
               ),
             ],
           ),
@@ -222,8 +241,9 @@ class _WalletScreenState extends State<WalletScreen> {
           ElevatedButton(
             onPressed: () {
               if (formKey.currentState!.validate()) {
+                final cleanNumber = numberController.text.replaceAll(RegExp(r'\s+'), '');
                 Navigator.pop(ctx);
-                _addCardApi(nameController.text.trim(), numberController.text.trim());
+                _addCardApi(nameController.text.trim(), cleanNumber);
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent),

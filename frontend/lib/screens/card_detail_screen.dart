@@ -92,6 +92,13 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                     labelStyle: TextStyle(color: Colors.white70),
                     border: OutlineInputBorder(),
                   ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return null;
+                    if (!RegExp(r'^(0[1-9]|1[0-2])\/?([0-9]{2})$').hasMatch(v.trim())) {
+                      return 'Định dạng hạn thẻ không hợp lệ (ví dụ: 12/28)';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -136,11 +143,14 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                       const SnackBar(content: Text('Cập nhật thông tin thẻ thành công!'), backgroundColor: Colors.green),
                     );
                     _refreshCardDetails();
+                  } else {
+                    final resBody = json.decode(response.body);
+                    throw Exception(resBody['error'] ?? 'Cập nhật thất bại');
                   }
                 } catch (e) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
+                      SnackBar(content: Text('Lỗi: ${e.toString().replaceAll("Exception: ", "")}'), backgroundColor: Colors.red),
                     );
                   }
                 } finally {
@@ -150,6 +160,108 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent),
             child: const Text('Lưu thông tin'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTopUpDialog() {
+    HapticService.selectionFeedback();
+    final amountController = TextEditingController(text: '50.00');
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF16213E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: const [
+            Icon(Icons.add_card, color: Colors.greenAccent, size: 28),
+            SizedBox(width: 8),
+            Text('Nạp Tiền Vào Thẻ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Nạp tiền trực tiếp vào ${_card['cardName'] ?? 'Thẻ'}. Số dư hiện tại: \$${(_card['balance']?.toDouble() ?? 0.0).toStringAsFixed(2)}',
+                style: const TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: amountController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                style: const TextStyle(color: Colors.greenAccent, fontSize: 24, fontWeight: FontWeight.bold),
+                decoration: const InputDecoration(
+                  labelText: 'Số tiền nạp (\$)',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  prefixText: '\$ ',
+                  prefixStyle: TextStyle(color: Colors.greenAccent, fontSize: 24),
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) {
+                  final amt = double.tryParse(v?.trim() ?? '');
+                  if (amt == null || amt <= 0) return 'Số tiền nạp phải lớn hơn 0';
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Hủy', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                final double amt = double.parse(amountController.text.trim());
+                Navigator.pop(ctx);
+                setState(() => _isLoading = true);
+                try {
+                  final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                  final response = await http.post(
+                    Uri.parse('${ApiConfig.baseUrl}/api/transactions'),
+                    headers: authProvider.authHeaders,
+                    body: json.encode({
+                      'cardId': _card['id'],
+                      'title': 'Nạp tiền vào ví',
+                      'category': 'Nạp tiền',
+                      'amount': amt,
+                      'isExpense': false,
+                      'status': 'Success',
+                    }),
+                  );
+                  if (response.statusCode == 201 && mounted) {
+                    HapticService.successFeedback();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Nạp tiền thành công +\$${amt.toStringAsFixed(2)}!'), backgroundColor: Colors.green),
+                    );
+                    _refreshCardDetails();
+                  } else {
+                    final resBody = json.decode(response.body);
+                    throw Exception(resBody['error'] ?? 'Nạp tiền thất bại');
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    HapticService.errorFeedback();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Lỗi nạp tiền: ${e.toString().replaceAll("Exception: ", "")}'), backgroundColor: Colors.red),
+                    );
+                  }
+                } finally {
+                  if (mounted) setState(() => _isLoading = false);
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.greenAccent, foregroundColor: Colors.black),
+            child: const Text('Xác Nhận Nạp Tiền', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -320,18 +432,36 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
 
                 const SizedBox(height: 24),
 
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _showEditCardDialog,
-                    icon: const Icon(Icons.edit_note),
-                    label: const Text('Chỉnh Sửa Thông Tin Thẻ'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.purpleAccent,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _showTopUpDialog,
+                        icon: const Icon(Icons.add_card),
+                        label: const Text('NẠP TIỀN VÀO THẺ', style: TextStyle(fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.greenAccent,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _showEditCardDialog,
+                        icon: const Icon(Icons.edit_note),
+                        label: const Text('Chỉnh Sửa Thẻ'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.purpleAccent,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
