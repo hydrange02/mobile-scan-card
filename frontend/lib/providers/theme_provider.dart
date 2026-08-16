@@ -12,6 +12,14 @@ class ThemeProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Color get backgroundColor => isDarkMode ? const Color(0xFF0F0F1A) : const Color(0xFFF4F5F9);
+  Color get cardColor => isDarkMode ? const Color(0xFF1E1E2C) : Colors.white;
+  Color get textColor => isDarkMode ? Colors.white : const Color(0xFF1A1A2E);
+  Color get subtitleColor => isDarkMode ? Colors.white70 : Colors.black54;
+  Color get cardBorderColor => isDarkMode ? Colors.white12 : Colors.black12;
+  Color get dialogBgColor => isDarkMode ? const Color(0xFF16213E) : Colors.white;
+  Color get inputFillColor => isDarkMode ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04);
+
   static ThemeData get darkTheme {
     return ThemeData(
       brightness: Brightness.dark,

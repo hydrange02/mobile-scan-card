@@ -60,6 +60,24 @@ router.post('/', async (req, res) => {
     const isExp = isExpense !== undefined ? Boolean(isExpense) : true;
     const txStatus = status || 'Success';
 
+function isCardExpired(expiryDate) {
+  if (!expiryDate) return false;
+  const parts = String(expiryDate).trim().split('/');
+  if (parts.length !== 2) return false;
+  const expMonth = parseInt(parts[0], 10);
+  const expYearTwoDigits = parseInt(parts[1], 10);
+  if (isNaN(expMonth) || isNaN(expYearTwoDigits)) return false;
+
+  const fullExpYear = 2000 + expYearTwoDigits;
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+
+  if (fullExpYear < currentYear) return true;
+  if (fullExpYear === currentYear && expMonth < currentMonth) return true;
+  return false;
+}
+
     // Atomic DB transaction for data integrity and race condition prevention
     const result = await prisma.$transaction(async (txPrisma) => {
       let targetCard = null;
@@ -67,6 +85,10 @@ router.post('/', async (req, res) => {
         targetCard = await txPrisma.card.findFirst({ where: { id: targetCardId, userId } });
         if (!targetCard) {
           throw new Error('Thẻ thanh toán không tồn tại hoặc không hợp lệ');
+        }
+
+        if (isCardExpired(targetCard.expiryDate)) {
+          throw new Error('Thẻ này đã hết hạn sử dụng. Vui lòng gia hạn hoặc chọn thẻ khác!');
         }
 
         // Check balance for expenses inside transaction with 2-decimal precision
@@ -109,6 +131,20 @@ router.post('/', async (req, res) => {
   } catch (error) {
     console.error('Error creating transaction:', error);
     res.status(400).json({ error: error.message || 'Failed to create transaction' });
+  }
+});
+
+// Clear all transactions for authenticated user
+router.delete('/', async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    await prisma.transaction.deleteMany({
+      where: { userId }
+    });
+    res.json({ message: 'Successfully cleared all transaction history' });
+  } catch (error) {
+    console.error('Error clearing transactions:', error);
+    res.status(500).json({ error: 'Failed to clear transaction history' });
   }
 });
 

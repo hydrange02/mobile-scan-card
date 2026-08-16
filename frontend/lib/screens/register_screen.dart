@@ -18,6 +18,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _pinController = TextEditingController();
   bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscurePin = true;
 
   Future<void> _register() async {
     final username = _usernameController.text.trim();
@@ -119,8 +121,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
               TextField(
                 controller: _passwordController,
                 style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(labelText: 'Mật khẩu', labelStyle: TextStyle(color: Colors.white70)),
-                obscureText: true,
+                obscureText: _obscurePassword,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: InputDecoration(
+                  labelText: 'Mật khẩu',
+                  labelStyle: const TextStyle(color: Colors.white70),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      color: Colors.cyanAccent,
+                    ),
+                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                ),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -128,13 +142,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 keyboardType: TextInputType.number,
                 maxLength: 6,
                 style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
+                obscureText: _obscurePin,
+                decoration: InputDecoration(
                   labelText: 'Mã PIN bảo mật (6 chữ số)',
-                  labelStyle: TextStyle(color: Colors.white70),
+                  labelStyle: const TextStyle(color: Colors.white70),
                   hintText: 'Ví dụ: 123456',
-                  hintStyle: TextStyle(color: Colors.white38),
+                  hintStyle: const TextStyle(color: Colors.white38),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePin ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      color: Colors.cyanAccent,
+                    ),
+                    onPressed: () => setState(() => _obscurePin = !_obscurePin),
+                  ),
                 ),
-                obscureText: true,
               ),
               const SizedBox(height: 30),
               _isLoading

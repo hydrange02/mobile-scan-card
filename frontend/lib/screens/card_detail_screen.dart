@@ -4,7 +4,9 @@ import 'dart:convert';
 import 'package:provider/provider.dart';
 import '../services/api_config.dart';
 import '../services/haptic_service.dart';
+import '../services/card_utils.dart';
 import '../providers/auth_provider.dart';
+import '../providers/locale_provider.dart';
 
 class CardDetailScreen extends StatefulWidget {
   final Map<String, dynamic> cardData;
@@ -71,17 +73,34 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                     labelStyle: TextStyle(color: Colors.white70),
                     border: OutlineInputBorder(),
                   ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Vui lòng nhập tên thẻ';
+                    final clean = v.trim();
+                    if (clean.length < 2 || clean.length > 50) return 'Tên thẻ phải từ 2 đến 50 ký tự';
+                    if (RegExp(r'[<>{}[\]\\\/@#$%^&*()=~|]').hasMatch(clean)) {
+                      return 'Tên thẻ không được chứa các ký tự đặc biệt';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: holderController,
                   style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
-                    labelText: 'Tên chủ sở hữu',
+                    labelText: 'Tên chủ sở hữu (không dấu, vd: NGUYEN VAN A)',
                     labelStyle: TextStyle(color: Colors.white70),
                     border: OutlineInputBorder(),
                   ),
-                  validator: (v) => v!.isEmpty ? 'Vui lòng nhập tên chủ thẻ' : null,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Vui lòng nhập tên chủ thẻ';
+                    final clean = v.trim();
+                    if (clean.length < 2 || clean.length > 50) return 'Tên chủ thẻ phải từ 2 đến 50 ký tự';
+                    if (!RegExp(r'^[A-Za-z\s.\-]+$').hasMatch(clean)) {
+                      return 'Tên chủ thẻ chỉ được gồm chữ cái không dấu (A-Z)';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -106,10 +125,18 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                   keyboardType: TextInputType.phone,
                   style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
-                    labelText: 'Số điện thoại liên kết',
+                    labelText: 'Số điện thoại liên kết (Vd: 0912345678)',
                     labelStyle: TextStyle(color: Colors.white70),
                     border: OutlineInputBorder(),
                   ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return null;
+                    final clean = v.trim();
+                    if (!RegExp(r'^(\+84|0)[35789][0-9]{8}$').hasMatch(clean)) {
+                      return 'Số ĐT không hợp lệ (gồm 10 chữ số, ví dụ: 0912345678)';
+                    }
+                    return null;
+                  },
                 ),
               ],
             ),
@@ -166,9 +193,23 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
     );
   }
 
+  double _parseNum(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is num) return v.toDouble();
+    if (v is String) return double.tryParse(v) ?? 0.0;
+    return 0.0;
+  }
+
   void _showTopUpDialog() {
+    if (CardUtils.isCardExpired(_card['expiryDate'])) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Thẻ này đã hết hạn sử dụng. Vui lòng bấm ✏️ ở góc trên để cập nhật hạn thẻ trước khi nạp tiền!'), backgroundColor: Colors.red),
+      );
+      return;
+    }
     HapticService.selectionFeedback();
-    final amountController = TextEditingController(text: '50.00');
+    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
+    final amountController = TextEditingController(text: localeProvider.isVND ? '100000' : '50.00');
     final formKey = GlobalKey<FormState>();
 
     showDialog(
@@ -189,7 +230,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Nạp tiền trực tiếp vào ${_card['cardName'] ?? 'Thẻ'}. Số dư hiện tại: \$${(_card['balance']?.toDouble() ?? 0.0).toStringAsFixed(2)}',
+                'Nạp tiền trực tiếp vào ${_card['cardName'] ?? 'Thẻ'}. Số dư hiện tại: ${localeProvider.formatAmount(_parseNum(_card['balance']))}',
                 style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
               const SizedBox(height: 16),
@@ -197,12 +238,12 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                 controller: amountController,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 style: const TextStyle(color: Colors.greenAccent, fontSize: 24, fontWeight: FontWeight.bold),
-                decoration: const InputDecoration(
-                  labelText: 'Số tiền nạp (\$)',
-                  labelStyle: TextStyle(color: Colors.white70),
-                  prefixText: '\$ ',
-                  prefixStyle: TextStyle(color: Colors.greenAccent, fontSize: 24),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: 'Số tiền nạp (${localeProvider.currencySymbol})',
+                  labelStyle: const TextStyle(color: Colors.white70),
+                  prefixText: '${localeProvider.currencySymbol} ',
+                  prefixStyle: const TextStyle(color: Colors.greenAccent, fontSize: 24),
+                  border: const OutlineInputBorder(),
                 ),
                 validator: (v) {
                   final amt = double.tryParse(v?.trim() ?? '');
@@ -270,6 +311,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final localeProvider = Provider.of<LocaleProvider>(context);
     final bool isDefault = _card['isDefault'] == true;
     final String cardNumber = _card['cardNumber']?.toString() ?? '4111222233339999';
     final String maskedNumber = cardNumber.length > 4
@@ -285,12 +327,17 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
     final String phone = (_card['phone'] != null && _card['phone'].toString().isNotEmpty)
         ? _card['phone'].toString()
         : 'Chưa cập nhật';
-    final double balance = (_card['balance']?.toDouble() ?? 0.0);
+    final double balance = _parseNum(_card['balance']);
+    final bool isExpired = CardUtils.isCardExpired(expiry);
 
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
       appBar: AppBar(
-        title: Text(_card['cardName']?.toString() ?? 'Chi Tiết Thẻ'),
+        title: Text(
+          _card['cardName']?.toString() ?? 'Chi Tiết Thẻ',
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
@@ -310,14 +357,16 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: isDefault
-                          ? [const Color(0xFF4A00E0), const Color(0xFF8E2DE2)]
-                          : [const Color(0xFF2C3E50), const Color(0xFF000000)],
+                      colors: isExpired
+                          ? [const Color(0xFF37474F), const Color(0xFF212121)]
+                          : isDefault
+                              ? [const Color(0xFF4A00E0), const Color(0xFF8E2DE2)]
+                              : [const Color(0xFF2C3E50), const Color(0xFF000000)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(24),
-                    border: isDefault ? Border.all(color: Colors.amber, width: 1.5) : null,
+                    border: isDefault ? Border.all(color: Colors.amber, width: 1.5) : (isExpired ? Border.all(color: Colors.redAccent.withValues(alpha: 0.5), width: 1) : null),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.4),
@@ -334,13 +383,32 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              (_card['cardName'] ?? 'NFC CARD').toString().toUpperCase(),
-                              style: TextStyle(
-                                color: isDefault ? Colors.amber : Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            Row(
+                              children: [
+                                Text(
+                                  (_card['cardName'] ?? 'NFC CARD').toString().toUpperCase(),
+                                  style: TextStyle(
+                                    color: isExpired ? Colors.white70 : (isDefault ? Colors.amber : Colors.white),
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if (isExpired) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.redAccent.withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: Colors.redAccent, width: 0.8),
+                                    ),
+                                    child: const Text(
+                                      'ĐÃ HẾT HẠN',
+                                      style: TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                             const Icon(Icons.nfc, color: Colors.cyanAccent, size: 30),
                           ],
@@ -377,7 +445,11 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                                 const SizedBox(height: 2),
                                 Text(
                                   expiry,
-                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                  style: TextStyle(
+                                    color: isExpired ? Colors.redAccent : Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ],
                             ),
@@ -387,6 +459,29 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                     ),
                   ),
                 ),
+
+                if (isExpired)
+                  Container(
+                    margin: const EdgeInsets.only(top: 16),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5)),
+                    ),
+                    child: Row(
+                      children: const [
+                        Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 24),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Thẻ này đã hết hạn sử dụng. Vui lòng bấm biểu tượng ✏️ ở góc trên để cập nhật hạn thẻ mới!',
+                            style: TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
                 const SizedBox(height: 24),
 
@@ -416,15 +511,15 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                       _buildInfoTile(
                         Icons.account_balance_wallet,
                         'Số dư khả dụng',
-                        '\$${balance.toStringAsFixed(2)}',
+                        localeProvider.formatAmount(balance),
                         valueColor: Colors.greenAccent,
                       ),
                       const Divider(color: Colors.white12, height: 1),
                       _buildInfoTile(
                         Icons.star,
                         'Trạng thái thẻ',
-                        isDefault ? 'Thẻ mặc định' : 'Thẻ phụ',
-                        valueColor: isDefault ? Colors.amber : Colors.white70,
+                        isExpired ? 'Đã hết hạn (Cần gia hạn)' : (isDefault ? 'Thẻ mặc định' : 'Thẻ phụ'),
+                        valueColor: isExpired ? Colors.redAccent : (isDefault ? Colors.amber : Colors.white70),
                       ),
                     ],
                   ),

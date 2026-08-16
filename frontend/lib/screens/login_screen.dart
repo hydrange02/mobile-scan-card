@@ -18,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   Future<void> _login() async {
     final email = _emailController.text.trim();
@@ -82,7 +83,25 @@ class _LoginScreenState extends State<LoginScreen> {
             const Text('Secure NFC Wallet', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
             const SizedBox(height: 40),
             TextField(controller: _emailController, style: const TextStyle(color: Colors.white), decoration: const InputDecoration(labelText: 'Email', labelStyle: TextStyle(color: Colors.white70), enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white70)))),
-            TextField(controller: _passwordController, style: const TextStyle(color: Colors.white), decoration: const InputDecoration(labelText: 'Password', labelStyle: TextStyle(color: Colors.white70), enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white70))), obscureText: true),
+            TextField(
+              controller: _passwordController,
+              style: const TextStyle(color: Colors.white),
+              obscureText: _obscurePassword,
+              autocorrect: false,
+              enableSuggestions: false,
+              decoration: InputDecoration(
+                labelText: 'Mật khẩu / Password',
+                labelStyle: const TextStyle(color: Colors.white70),
+                enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white70)),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                    color: Colors.cyanAccent,
+                  ),
+                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                ),
+              ),
+            ),
             const SizedBox(height: 30),
             _isLoading ? const CircularProgressIndicator() : SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _login, style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent), child: const Text('Login', style: TextStyle(color: Colors.black)))),
             TextButton(onPressed: () => Navigator.pushNamed(context, '/register'), child: const Text('Register Account', style: TextStyle(color: Colors.white70)))

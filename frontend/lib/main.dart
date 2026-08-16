@@ -141,91 +141,146 @@ class _LockOverlayScreenState extends State<LockOverlayScreen> {
     final passwordController = TextEditingController();
     final newPinController = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    final targetContext = navigatorKey.currentContext ?? context;
+
+    bool isSubmitting = false;
+    String? dialogError;
 
     showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF16213E),
-        title: const Text('Mở Khóa Qua Mật Khẩu', style: TextStyle(color: Colors.white)),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Nhập mật khẩu tài khoản để mở khóa & tạo PIN mới (6 số):', style: TextStyle(color: Colors.white70, fontSize: 13)),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: passwordController,
-                style: const TextStyle(color: Colors.white),
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Mật khẩu tài khoản',
-                  labelStyle: TextStyle(color: Colors.white70),
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) => (v ?? '').isEmpty ? 'Vui lòng nhập mật khẩu' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: newPinController,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                style: const TextStyle(color: Colors.white),
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Mã PIN mới (đúng 6 chữ số)',
-                  labelStyle: TextStyle(color: Colors.white70),
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) => (v?.length ?? 0) != 6 || !RegExp(r'^\d+$').hasMatch(v ?? '') ? 'Mã PIN phải gồm đúng 6 chữ số' : null,
-              ),
+      context: targetContext,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF16213E),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: const [
+              Icon(Icons.lock_reset_rounded, color: Colors.cyanAccent, size: 28),
+              SizedBox(width: 8),
+              Text('Mở Khóa Qua Mật Khẩu', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
             ],
           ),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Nhập mật khẩu tài khoản để mở khóa và cài đặt lại Mã PIN mới (6 chữ số):',
+                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: passwordController,
+                    style: const TextStyle(color: Colors.white),
+                    obscureText: true,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    decoration: const InputDecoration(
+                      labelText: 'Mật khẩu đăng nhập',
+                      labelStyle: TextStyle(color: Colors.white70),
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) => (v?.trim().isEmpty ?? true) ? 'Vui lòng nhập mật khẩu' : null,
+                  ),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: newPinController,
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
+                    style: const TextStyle(color: Colors.white),
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Mã PIN mới (đúng 6 chữ số)',
+                      labelStyle: TextStyle(color: Colors.white70),
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) => (v?.trim().length ?? 0) != 6 || !RegExp(r'^\d+$').hasMatch(v?.trim() ?? '')
+                        ? 'Mã PIN phải gồm đúng 6 chữ số'
+                        : null,
+                  ),
+                  if (dialogError != null) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        dialogError!,
+                        style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Hủy', style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              onPressed: isSubmitting
+                  ? null
+                  : () async {
+                      if (formKey.currentState!.validate()) {
+                        setDialogState(() {
+                          isSubmitting = true;
+                          dialogError = null;
+                        });
+                        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                        final autoLockService = Provider.of<AutoLockService>(context, listen: false);
+
+                        try {
+                          final response = await http.post(
+                            Uri.parse('${ApiConfig.baseUrl}/api/user/reset-pin'),
+                            headers: authProvider.authHeaders,
+                            body: jsonEncode({
+                              'password': passwordController.text.trim(),
+                              'newPin': newPinController.text.trim(),
+                            }),
+                          );
+
+                          if (response.statusCode == 200) {
+                            final navState = navigatorKey.currentState;
+                            if (navState != null && navState.canPop()) {
+                              navState.pop();
+                            }
+                            autoLockService.unlock();
+                            await authProvider.fetchUserProfile();
+                            final currentCtx = navigatorKey.currentContext;
+                            if (currentCtx != null && currentCtx.mounted) {
+                              ScaffoldMessenger.of(currentCtx).showSnackBar(
+                                const SnackBar(content: Text('Đặt lại Mã PIN & mở khóa thành công!'), backgroundColor: Colors.green),
+                              );
+                            }
+                          } else {
+                            final resData = jsonDecode(response.body);
+                            setDialogState(() {
+                              dialogError = resData['error'] ?? 'Mật khẩu không chính xác hoặc đặt lại PIN thất bại';
+                            });
+                          }
+                        } catch (e) {
+                          setDialogState(() {
+                            dialogError = 'Lỗi kết nối máy chủ';
+                          });
+                        } finally {
+                          setDialogState(() {
+                            isSubmitting = false;
+                          });
+                        }
+                      }
+                    },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black),
+              child: isSubmitting
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                  : const Text('Mở khóa & Lưu PIN'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy', style: TextStyle(color: Colors.white54)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (formKey.currentState!.validate()) {
-                final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                final autoLockService = Provider.of<AutoLockService>(context, listen: false);
-                final navigator = Navigator.of(ctx);
-                final messenger = ScaffoldMessenger.of(context);
-                try {
-                  final response = await http.post(
-                    Uri.parse('${ApiConfig.baseUrl}/api/user/reset-pin'),
-                    headers: authProvider.authHeaders,
-                    body: jsonEncode({
-                      'password': passwordController.text.trim(),
-                      'newPin': newPinController.text.trim(),
-                    }),
-                  );
-                  if (response.statusCode == 200) {
-                    navigator.pop();
-                    autoLockService.unlock();
-                    messenger.showSnackBar(
-                      const SnackBar(content: Text('Đặt lại PIN & mở khóa thành công!'), backgroundColor: Colors.green),
-                    );
-                  } else {
-                    final resData = jsonDecode(response.body);
-                    messenger.showSnackBar(
-                      SnackBar(content: Text(resData['error'] ?? 'Đặt lại PIN thất bại'), backgroundColor: Colors.red),
-                    );
-                  }
-                } catch (e) {
-                  messenger.showSnackBar(
-                    SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
-                  );
-                }
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black),
-            child: const Text('Mở khóa & Lưu PIN'),
-          ),
-        ],
       ),
     );
   }

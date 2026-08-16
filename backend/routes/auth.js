@@ -10,24 +10,24 @@ router.post('/register', async (req, res) => {
   try {
     const { username, email, password, pin } = req.body;
     const strPin = pin != null ? String(pin).trim() : '';
+    const cleanPassword = password != null ? String(password).trim() : '';
+    const cleanEmail = email != null ? String(email).trim().toLowerCase() : '';
+    const cleanUsername = username != null ? String(username).trim() : '';
 
-    if (!username || !email || !password || !strPin) {
+    if (!cleanUsername || !cleanEmail || !cleanPassword || !strPin) {
       return res.status(400).json({ error: 'All fields including PIN are required' });
     }
     if (!/^\d{6}$/.test(strPin)) {
       return res.status(400).json({ error: 'Mã PIN bảo mật phải gồm đúng 6 chữ số' });
     }
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanUsername = username.trim();
-
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       return res.status(400).json({ error: 'Định dạng email không hợp lệ' });
     }
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Mật khẩu phải từ 6 ký tự trở lên' });
+    if (cleanPassword.length < 6) {
+      return res.status(400).json({ error: 'Mật khẩu phải từ 6 ký tự trở lên (không tính khoảng trắng đầu/cuối)' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(cleanPassword, 10);
     const hashedPin = await bcrypt.hash(strPin, 10);
     const user = await prisma.user.create({
       data: { username: cleanUsername, email: cleanEmail, password: hashedPassword, pin: hashedPin }
@@ -42,12 +42,14 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) {
+    const cleanEmail = email != null ? String(email).trim().toLowerCase() : '';
+    const cleanPassword = password != null ? String(password).trim() : '';
+
+    if (!cleanEmail || !cleanPassword) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
-    const cleanEmail = email.trim().toLowerCase();
     const user = await prisma.user.findUnique({ where: { email: cleanEmail } });
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    if (!user || !(await bcrypt.compare(cleanPassword, user.password))) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
     const secret = process.env.JWT_SECRET || 'supersecretnfcwalletkey123';

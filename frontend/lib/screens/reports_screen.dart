@@ -16,6 +16,7 @@ class ReportsScreen extends StatefulWidget {
 }
 
 class _ReportsScreenState extends State<ReportsScreen> {
+  final _searchController = TextEditingController();
   String _selectedStatus = 'All';
   String _selectedCardType = 'All';
   String _selectedTimeFilter = 'All'; // All, Today, ThisMonth, LastMonth, Last7Days
@@ -27,6 +28,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
   void initState() {
     super.initState();
     _fetchTransactions();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchTransactions() async {
@@ -57,6 +64,76 @@ class _ReportsScreenState extends State<ReportsScreen> {
     }
   }
 
+  Future<void> _clearTransactionHistory() async {
+    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF16213E),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
+            SizedBox(width: 8),
+            Text('Xác Nhận Xóa Lịch Sử', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Text(
+          'Bạn có chắc chắn muốn xóa toàn bộ lịch sử giao dịch? Dữ liệu nhật ký giao dịch sẽ bị xóa và không thể khôi phục.',
+          style: TextStyle(color: Colors.white70, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Hủy', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+            child: Text(localeProvider.getText('clear_history')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final response = await http.delete(
+        Uri.parse('${ApiConfig.baseUrl}/api/transactions'),
+        headers: authProvider.authHeaders,
+      );
+
+      if (response.statusCode == 200 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã xóa sạch toàn bộ lịch sử giao dịch!'), backgroundColor: Colors.green),
+        );
+        _fetchTransactions();
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Không thể xóa lịch sử giao dịch'), backgroundColor: Colors.red),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  String _removeDiacritics(String str) {
+    const withDiacritics = 'àáảãạăắằẳẵặânấầnẩẫậnèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđÀÁẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬÈÉẺẼẸÊẾỀỂỄỆÌÍỈĨỊÒÓỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÙÚỦŨỤƯỨỪỬỮỰỲÝỶỸỴĐ';
+    const withoutDiacritics = 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyydaaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyd';
+    var result = str;
+    for (int i = 0; i < withDiacritics.length; i++) {
+      result = result.replaceAll(withDiacritics[i], withoutDiacritics[i]);
+    }
+    return result.toLowerCase();
+  }
+
   List<Map<String, dynamic>> get _filteredTransactions {
     final now = DateTime.now();
     return _allTransactions.map((tx) => Map<String, dynamic>.from(tx as Map)).where((tx) {
@@ -85,11 +162,29 @@ class _ReportsScreenState extends State<ReportsScreen> {
         }
       }
 
-      if (_searchQuery.isNotEmpty) {
-        final title = (tx['title'] ?? '').toString().toLowerCase();
-        final id = (tx['id'] ?? '').toString().toLowerCase();
-        final query = _searchQuery.toLowerCase();
-        if (!title.contains(query) && !id.contains(query)) return false;
+      // Smart Vietnamese Accented & Unaccented Search Logic
+      if (_searchQuery.trim().isNotEmpty) {
+        final rawQuery = _searchQuery.trim();
+        final normQuery = _removeDiacritics(rawQuery);
+
+        final title = (tx['title'] ?? '').toString();
+        final id = (tx['id'] ?? '').toString();
+        final cardName = (tx['cardName'] ?? '').toString();
+        final category = (tx['category'] ?? '').toString();
+        final amountStr = (tx['amount'] ?? '').toString();
+
+        final normTitle = _removeDiacritics(title);
+        final normId = _removeDiacritics(id);
+        final normCardName = _removeDiacritics(cardName);
+        final normCategory = _removeDiacritics(category);
+
+        final matchesQuery = normTitle.contains(normQuery) ||
+            normId.contains(normQuery) ||
+            normCardName.contains(normQuery) ||
+            normCategory.contains(normQuery) ||
+            amountStr.contains(rawQuery);
+
+        if (!matchesQuery) return false;
       }
       return true;
     }).toList();
@@ -269,6 +364,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     _showExportResult(localeProvider.getText('export_csv'), csv);
                   },
                 ),
+                IconButton(
+                  icon: const Icon(Icons.delete_sweep_rounded, color: Colors.redAccent, size: 22),
+                  tooltip: localeProvider.getText('clear_history'),
+                  onPressed: _clearTransactionHistory,
+                ),
               ],
             ),
           ],
@@ -306,9 +406,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           ],
                         ),
                         const SizedBox(height: 6),
-                        Text(
-                          '-\$${totalExpense.toStringAsFixed(2)}',
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.redAccent),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            '-${localeProvider.formatAmount(totalExpense)}',
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.redAccent),
+                          ),
                         ),
                       ],
                     ),
@@ -327,9 +431,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           ],
                         ),
                         const SizedBox(height: 6),
-                        Text(
-                          '+\$${totalIncome.toStringAsFixed(2)}',
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.greenAccent),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            '+${localeProvider.formatAmount(totalIncome)}',
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.greenAccent),
+                          ),
                         ),
                       ],
                     ),
@@ -372,9 +480,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         style: const TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        '\$${avgAmount.toStringAsFixed(2)}',
-                        style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold, fontSize: 14),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          localeProvider.formatAmount(avgAmount),
+                          style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
                       ),
                     ],
                   ),
@@ -404,11 +516,21 @@ class _ReportsScreenState extends State<ReportsScreen> {
         // 2. SEARCH BAR
         // -------------------------------------------------------------
         TextField(
+          controller: _searchController,
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
-            hintText: 'Tìm kiếm giao dịch, mã hóa đơn...',
-            hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
+            hintText: 'Tìm kiếm giao dịch, tên thẻ, số tiền (VD: thanh toan, 50000)...',
+            hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
             prefixIcon: const Icon(Icons.search, color: Colors.white54),
+            suffixIcon: _searchQuery.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear, color: Colors.white54),
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() => _searchQuery = '');
+                    },
+                  )
+                : null,
             filled: true,
             fillColor: Colors.white.withValues(alpha: 0.05),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -553,12 +675,19 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      '${isExpense ? '-' : '+'}\$${tx['amount']}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: isExpense ? Colors.redAccent : Colors.greenAccent,
+                    SizedBox(
+                      width: 120,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          '${isExpense ? '-' : '+'}${localeProvider.formatAmount(tx['amount'])}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: isExpense ? Colors.redAccent : Colors.greenAccent,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 2),

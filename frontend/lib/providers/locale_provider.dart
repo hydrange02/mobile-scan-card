@@ -3,13 +3,58 @@ import 'package:flutter/material.dart';
 /// Localization Provider for switching language between English (en) & Vietnamese (vi)
 class LocaleProvider extends ChangeNotifier {
   Locale _locale = const Locale('vi');
+  String _currency = 'VND'; // Default to VND (₫)
 
   Locale get locale => _locale;
   bool get isVietnamese => _locale.languageCode == 'vi';
 
+  String get currency => _currency;
+  bool get isVND => _currency == 'VND';
+  String get currencySymbol => _currency == 'VND' ? '₫' : '\$';
+
   void setLocale(String languageCode) {
     _locale = Locale(languageCode);
     notifyListeners();
+  }
+
+  void setCurrency(String currencyCode) {
+    _currency = currencyCode;
+    notifyListeners();
+  }
+
+  String formatAmount(dynamic amount, {bool showSymbol = true}) {
+    double numVal = 0.0;
+    if (amount is num) {
+      numVal = amount.toDouble();
+    } else if (amount is String) {
+      numVal = double.tryParse(amount) ?? 0.0;
+    }
+
+    if (_currency == 'VND') {
+      final int rounded = numVal.round();
+      final String str = rounded.abs().toString();
+      final buffer = StringBuffer();
+      for (int i = 0; i < str.length; i++) {
+        if (i > 0 && (str.length - i) % 3 == 0) {
+          buffer.write('.');
+        }
+        buffer.write(str[i]);
+      }
+      final formatted = (numVal < 0 ? '-' : '') + buffer.toString();
+      return showSymbol ? '$formatted ₫' : formatted;
+    } else {
+      final parts = numVal.abs().toStringAsFixed(2).split('.');
+      final str = parts[0];
+      final buffer = StringBuffer();
+      for (int i = 0; i < str.length; i++) {
+        if (i > 0 && (str.length - i) % 3 == 0) {
+          buffer.write(',');
+        }
+        buffer.write(str[i]);
+      }
+      final formatted = '${numVal < 0 ? '-' : ''}${buffer.toString()}.${parts[1]}';
+      return showSymbol ? '\$$formatted' : formatted;
+    }
   }
 
   // Multi-language dictionary dictionary lookup helper
@@ -24,6 +69,9 @@ class LocaleProvider extends ChangeNotifier {
       'profile': 'Profile',
       'dark_mode': 'Dark Mode',
       'language': 'Language',
+      'currency_unit': 'Currency Unit',
+      'currency_vnd': 'VND (₫) - Vietnam Dong',
+      'currency_usd': 'USD (\$) - US Dollar',
       'auto_lock': 'Auto-Lock Inactivity',
       'export_backup': 'Export AES Encrypted Backup',
       'import_backup': 'Import AES Backup',
@@ -66,6 +114,28 @@ class LocaleProvider extends ChangeNotifier {
       'total_transactions': 'Total Transactions',
       'avg_amount': 'Avg / Transaction',
       'success_rate': 'Success Rate',
+      'nfc_step_1': '1. Turn on NFC in your phone settings.',
+      'nfc_step_2': '2. Hold your physical card or tag near the back sensor of the phone.',
+      'nfc_step_3': '3. Keep steady for 1-2 seconds until you feel haptic vibration.',
+      'nfc_step_4': '4. Check data checksum validation result on screen.',
+      'faq_q1': 'Q: What if the card is not detected?',
+      'faq_a1': 'A: Remove thick phone cases or ensure the NFC chip is enabled in system settings.',
+      'faq_q2': 'Q: How secure is the AES Backup?',
+      'faq_a2': 'A: Data is encrypted with 256-bit AES cipher, requiring secret key to restore.',
+      'contact_calling': 'Calling customer support...',
+      'payment_title': 'NFC & QR Payment',
+      'nfc_tab': 'NFC Tap',
+      'qr_tab': 'Scan QR',
+      'select_card_source': 'Select Payment Card Source',
+      'payment_amount': 'Payment Amount',
+      'note_label': 'Payment Content / Note (Optional)',
+      'tap_nfc_btn': 'TAP NFC CARD TO PAY',
+      'qr_code_title': 'PAYMENT QR CODE',
+      'qr_code_sub': 'Scan this code with e-wallet to pay',
+      'total_expense': 'TOTAL EXPENSE',
+      'total_income': 'TOTAL RECEIVED',
+      'clear_history': 'Clear History',
+      'expired': 'EXPIRED',
     },
     'vi': {
       'app_title': 'Ví NFC Bảo Mật',
@@ -77,6 +147,9 @@ class LocaleProvider extends ChangeNotifier {
       'profile': 'Hồ sơ',
       'dark_mode': 'Chế độ tối',
       'language': 'Ngôn ngữ',
+      'currency_unit': 'Đơn vị tiền tệ',
+      'currency_vnd': 'VND (₫) - Việt Nam Đồng',
+      'currency_usd': 'USD (\$) - Đô la Mỹ',
       'auto_lock': 'Tự động khóa khi không hoạt động',
       'export_backup': 'Xuất file sao lưu mã hóa AES',
       'import_backup': 'Nhập file sao lưu AES',
@@ -119,6 +192,28 @@ class LocaleProvider extends ChangeNotifier {
       'total_transactions': 'Số lượt giao dịch',
       'avg_amount': 'Trung bình/giao dịch',
       'success_rate': 'Tỷ lệ thành công',
+      'nfc_step_1': '1. Bật NFC trong Cài đặt điện thoại của bạn.',
+      'nfc_step_2': '2. Đưa thẻ vật lý hoặc chip NFC đến gần mặt lưng điện thoại.',
+      'nfc_step_3': '3. Giữ nguyên 1-2 giây cho đến khi có phản hồi rung.',
+      'nfc_step_4': '4. Kiểm tra kết quả xác thực dữ liệu trên màn hình.',
+      'faq_q1': 'Hỏi: Nếu không nhận thẻ NFC thì làm sao?',
+      'faq_a1': 'Đáp: Tháo ốp lưng quá dày hoặc kiểm tra bật NFC trong Cài đặt hệ thống.',
+      'faq_q2': 'Hỏi: Sao lưu AES bảo mật thế nào?',
+      'faq_a2': 'Đáp: Dữ liệu được mã hóa thuật toán AES 256-bit chuẩn quân sự.',
+      'contact_calling': 'Đang kết nối tổng đài hỗ trợ...',
+      'payment_title': 'Thanh Toán NFC & Quét QR',
+      'nfc_tab': 'Chạm NFC',
+      'qr_tab': 'Quét Mã QR',
+      'select_card_source': 'Chọn Nguồn Thẻ Thanh Toán',
+      'payment_amount': 'Số Tiền Thanh Toán',
+      'note_label': 'Nội dung / Ghi chú thanh toán (Tùy chọn)',
+      'tap_nfc_btn': 'CHẠM THẺ NFC ĐỂ THANH TOÁN',
+      'qr_code_title': 'MÃ QR THANH TOÁN',
+      'qr_code_sub': 'Quét mã này bằng ví điện tử để thanh toán',
+      'total_expense': 'TỔNG CHI TIÊU',
+      'total_income': 'TỔNG NHẬN TIỀN',
+      'clear_history': 'Xóa Lịch Sử Giao Dịch',
+      'expired': 'ĐÃ HẾT HẠN',
     },
   };
 

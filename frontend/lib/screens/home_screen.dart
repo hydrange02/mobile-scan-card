@@ -12,6 +12,7 @@ import '../providers/locale_provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/haptic_service.dart';
 import '../services/api_config.dart';
+import '../services/card_utils.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -113,7 +114,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ? "**** **** **** ${cardNumber.substring(cardNumber.length - 4)}"
         : (cardNumber.isNotEmpty ? cardNumber : "**** **** **** ----");
     final String cardName = defaultCard != null ? defaultCard['cardName'].toString() : '';
-    final double cardBalance = defaultCard != null ? (defaultCard['balance']?.toDouble() ?? 0.0) : 0.0;
+    final dynamic rawBalance = defaultCard != null ? defaultCard['balance'] : null;
+    final double cardBalance = rawBalance is num ? rawBalance.toDouble() : (double.tryParse(rawBalance?.toString() ?? '') ?? 0.0);
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -162,56 +164,81 @@ class _HomeScreenState extends State<HomeScreen> {
           )
         else
           InkWell(
-            onTap: () {
+            onTap: () async {
               HapticService.selectionFeedback();
-              Navigator.push(context, MaterialPageRoute(builder: (_) => CardDetailScreen(cardData: defaultCard)));
+              await Navigator.push(context, MaterialPageRoute(builder: (_) => CardDetailScreen(cardData: defaultCard)));
+              _fetchCards();
+              _fetchTransactions();
             },
             borderRadius: BorderRadius.circular(24),
-            child: Container(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF4A00E0), Color(0xFF8E2DE2)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF8E2DE2).withValues(alpha: 0.3),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.amber.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.amber, width: 1),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.star, size: 14, color: Colors.amber),
-                            const SizedBox(width: 4),
-                            Text(
-                              localeProvider.getText('default_card').toUpperCase(),
-                              style: const TextStyle(color: Colors.amber, fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.nfc, color: Colors.cyanAccent, size: 28),
-                    ],
+            child: Builder(builder: (context) {
+              final bool isExpired = CardUtils.isCardExpired(defaultCard['expiryDate']);
+              return Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isExpired
+                        ? [const Color(0xFF37474F), const Color(0xFF212121)]
+                        : [const Color(0xFF4A00E0), const Color(0xFF8E2DE2)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (isExpired ? Colors.grey : const Color(0xFF8E2DE2)).withValues(alpha: 0.3),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: Colors.amber, width: 1),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.star, size: 14, color: Colors.amber),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      localeProvider.getText('default_card').toUpperCase(),
+                                      style: const TextStyle(color: Colors.amber, fontSize: 11, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (isExpired) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.redAccent.withValues(alpha: 0.3),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: Colors.redAccent, width: 1),
+                                  ),
+                                  child: const Text(
+                                    'ĐÃ HẾT HẠN',
+                                    style: TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const Icon(Icons.nfc, color: Colors.cyanAccent, size: 28),
+                        ],
+                      ),
                   const SizedBox(height: 16),
                   Text(
                     cardName,
@@ -223,9 +250,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    '\$${cardBalance.toStringAsFixed(2)}',
-                    style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: 1),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      localeProvider.formatAmount(cardBalance),
+                      style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold, letterSpacing: 1),
+                    ),
                   ),
                   const SizedBox(height: 20),
                   Text(
@@ -235,7 +266,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-          ),
+          );
+        }),
         ),
 
         const SizedBox(height: 20),
@@ -297,7 +329,7 @@ class _HomeScreenState extends State<HomeScreen> {
             TextButton(
               onPressed: () {
                 HapticService.selectionFeedback();
-                setState(() => _currentIndex = 2); // Switch to Reports tab
+                setState(() => _currentIndex = 3); // Switch to Reports/History tab
               },
               child: Text(
                 localeProvider.getText('see_all'),
@@ -326,7 +358,7 @@ class _HomeScreenState extends State<HomeScreen> {
         else
           ...recentTransactions.take(5).map((tx) {
             final bool isExpense = tx['isExpense'] == true;
-            final String amountText = '${isExpense ? '-' : '+'}\$${tx['amount']}';
+            final String amountText = '${isExpense ? '-' : '+'}${localeProvider.formatAmount(tx['amount'])}';
             return Card(
               margin: const EdgeInsets.only(bottom: 10),
               color: Colors.white.withValues(alpha: 0.03),
@@ -350,12 +382,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   '${_formatDate(tx['date']?.toString())} • ${tx['cardName']}',
                   style: const TextStyle(color: Colors.white54, fontSize: 12),
                 ),
-                trailing: Text(
-                  amountText,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: isExpense ? Colors.redAccent : Colors.greenAccent,
+                trailing: SizedBox(
+                  width: 130,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      amountText,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: isExpense ? Colors.redAccent : Colors.greenAccent,
+                      ),
+                    ),
                   ),
                 ),
               ),
