@@ -39,6 +39,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    if (password.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mật khẩu phải có ít nhất 6 ký tự')),
+      );
+      return;
+    }
+
     if (!RegExp(r'^\d{6}$').hasMatch(pin)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Mã PIN phải gồm đúng 6 chữ số (chỉ chứa số)')),
@@ -61,6 +68,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (response.statusCode == 201) {
         if (!mounted) return;
+        _usernameController.clear();
+        _emailController.clear();
+        _passwordController.clear();
+        _pinController.clear();
         // Purge any lingering session from previous accounts
         Provider.of<AuthProvider>(context, listen: false).logout();
         ScaffoldMessenger.of(context).showSnackBar(

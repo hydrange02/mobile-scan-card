@@ -5,6 +5,8 @@ import 'dart:convert';
 import '../providers/auth_provider.dart';
 import '../providers/locale_provider.dart';
 import '../services/api_config.dart';
+import '../services/autolock_service.dart';
+import '../main.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -401,8 +403,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: OutlinedButton.icon(
                 onPressed: () {
                   final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                  final autoLockService = Provider.of<AutoLockService>(context, listen: false);
+                  autoLockService.unlock();
                   authProvider.logout();
-                  Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+                  navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (route) => false);
                 },
                 icon: const Icon(Icons.logout),
                 label: Text(localeProvider.getText('logout')),

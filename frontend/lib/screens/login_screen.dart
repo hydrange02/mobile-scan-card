@@ -39,8 +39,8 @@ class _LoginScreenState extends State<LoginScreen> {
         Uri.parse('${ApiConfig.baseUrl}/api/auth/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'email': _emailController.text,
-          'password': _passwordController.text,
+          'email': email,
+          'password': password,
         }),
       );
 
@@ -52,6 +52,8 @@ class _LoginScreenState extends State<LoginScreen> {
           token: responseData['token'],
           user: responseData['user'],
         );
+        _emailController.clear();
+        _passwordController.clear();
         Provider.of<AutoLockService>(context, listen: false).unlock();
         Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
       } else {

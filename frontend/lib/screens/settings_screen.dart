@@ -9,6 +9,7 @@ import '../services/api_config.dart';
 import '../services/autolock_service.dart';
 import '../services/backup_service.dart';
 import '../services/haptic_service.dart';
+import '../main.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -20,8 +21,6 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _importController = TextEditingController();
 
-  Map<String, dynamic>? _userProfile;
-
   @override
   void initState() {
     super.initState();
@@ -29,32 +28,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _fetchUserProfile() async {
-    try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/api/user/profile'),
-        headers: authProvider.authHeaders,
-      );
-      if (response.statusCode == 200 && mounted) {
-        setState(() {
-          _userProfile = json.decode(response.body);
-        });
-      } else if (mounted) {
-        setState(() {
-          _userProfile = null;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _userProfile = null);
-    }
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    await authProvider.fetchUserProfile();
   }
 
   void _showEditProfileDialog() {
     HapticService.selectionFeedback();
-    final nameController = TextEditingController(text: _userProfile?['fullName']?.toString() ?? '');
-    final phoneController = TextEditingController(text: _userProfile?['phone']?.toString() ?? '');
-    final addressController = TextEditingController(text: _userProfile?['address']?.toString() ?? '');
-    final dobController = TextEditingController(text: _userProfile?['dob']?.toString() ?? '');
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.user;
+    final nameController = TextEditingController(text: (user?['fullName'] ?? '').toString());
+    final phoneController = TextEditingController(text: (user?['phone'] ?? '').toString());
+    final addressController = TextEditingController(text: (user?['address'] ?? '').toString());
+    final dobController = TextEditingController(text: (user?['dob'] ?? '').toString());
 
     showDialog(
       context: context,
@@ -516,10 +501,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final autoLockService = Provider.of<AutoLockService>(context);
     final authProvider = Provider.of<AuthProvider>(context);
 
-    final String username = _userProfile?['username'] ?? authProvider.user?['username'] ?? 'User';
-    final String email = _userProfile?['email'] ?? authProvider.user?['email'] ?? 'user@example.com';
-    final String fullName = (_userProfile?['fullName'] ?? '').toString();
-    final String phone = (_userProfile?['phone'] ?? '').toString();
+    final user = authProvider.user;
+    final String username = (user?['username'] ?? 'User').toString();
+    final String email = (user?['email'] ?? 'user@example.com').toString();
+    final String fullName = (user?['fullName'] ?? '').toString();
+    final String phone = (user?['phone'] ?? '').toString();
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -701,15 +687,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ListTile(
                 leading: const Icon(Icons.timer_outlined, color: Colors.orangeAccent),
                 title: Text(localeProvider.getText('auto_lock'), style: const TextStyle(color: Colors.white)),
-                subtitle: Text('${autoLockService.autoLockSeconds} giây', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                subtitle: Text(
+                  autoLockService.autoLockSeconds == 0
+                      ? 'Tắt'
+                      : autoLockService.autoLockSeconds == 60
+                          ? '1 phút'
+                          : autoLockService.autoLockSeconds == 300
+                              ? '5 phút (Mặc định)'
+                              : autoLockService.autoLockSeconds == 600
+                                  ? '10 phút'
+                                  : '${autoLockService.autoLockSeconds} giây',
+                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                ),
                 trailing: DropdownButton<int>(
-                  value: autoLockService.autoLockSeconds,
+                  value: [0, 60, 300, 600].contains(autoLockService.autoLockSeconds)
+                      ? autoLockService.autoLockSeconds
+                      : 300,
                   dropdownColor: const Color(0xFF16213E),
                   style: const TextStyle(color: Colors.white),
                   items: const [
-                    DropdownMenuItem(value: 30, child: Text('30s')),
-                    DropdownMenuItem(value: 60, child: Text('60s')),
+                    DropdownMenuItem(value: 0, child: Text('Tắt')),
+                    DropdownMenuItem(value: 60, child: Text('1 phút')),
                     DropdownMenuItem(value: 300, child: Text('5 phút')),
+                    DropdownMenuItem(value: 600, child: Text('10 phút')),
                   ],
                   onChanged: (val) {
                     if (val != null) {
@@ -754,8 +754,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           width: double.infinity,
           child: OutlinedButton.icon(
             onPressed: () {
+              final autoLockService = Provider.of<AutoLockService>(context, listen: false);
+              autoLockService.unlock();
               authProvider.logout();
-              Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+              navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (route) => false);
             },
             icon: const Icon(Icons.logout),
             label: Text(localeProvider.getText('logout')),

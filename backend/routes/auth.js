@@ -52,7 +52,19 @@ router.post('/login', async (req, res) => {
     }
     const secret = process.env.JWT_SECRET || 'supersecretnfcwalletkey123';
     const token = jwt.sign({ userId: user.id }, secret, { expiresIn: '24h' });
-    res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        fullName: user.fullName || '',
+        phone: user.phone || '',
+        address: user.address || '',
+        dob: user.dob || '',
+        hasPin: Boolean(user.pin),
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }
