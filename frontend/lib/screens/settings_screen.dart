@@ -9,6 +9,7 @@ import '../services/api_config.dart';
 import '../services/autolock_service.dart';
 import '../services/backup_service.dart';
 import '../services/haptic_service.dart';
+import '../main.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -20,8 +21,6 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _importController = TextEditingController();
 
-  Map<String, dynamic>? _userProfile;
-
   @override
   void initState() {
     super.initState();
@@ -29,32 +28,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _fetchUserProfile() async {
-    try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/api/user/profile'),
-        headers: authProvider.authHeaders,
-      );
-      if (response.statusCode == 200 && mounted) {
-        setState(() {
-          _userProfile = json.decode(response.body);
-        });
-      } else if (mounted) {
-        setState(() {
-          _userProfile = null;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _userProfile = null);
-    }
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    await authProvider.fetchUserProfile();
   }
 
   void _showEditProfileDialog() {
     HapticService.selectionFeedback();
-    final nameController = TextEditingController(text: _userProfile?['fullName']?.toString() ?? '');
-    final phoneController = TextEditingController(text: _userProfile?['phone']?.toString() ?? '');
-    final addressController = TextEditingController(text: _userProfile?['address']?.toString() ?? '');
-    final dobController = TextEditingController(text: _userProfile?['dob']?.toString() ?? '');
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.user;
+    final nameController = TextEditingController(text: (user?['fullName'] ?? '').toString());
+    final phoneController = TextEditingController(text: (user?['phone'] ?? '').toString());
+    final addressController = TextEditingController(text: (user?['address'] ?? '').toString());
+    final dobController = TextEditingController(text: (user?['dob'] ?? '').toString());
 
     showDialog(
       context: context,
@@ -171,31 +156,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 controller: currentPassController,
                 style: const TextStyle(color: Colors.white),
                 obscureText: true,
+                autocorrect: false,
+                enableSuggestions: false,
                 decoration: const InputDecoration(
                   labelText: 'Mật khẩu hiện tại',
                   labelStyle: TextStyle(color: Colors.white70),
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) => v!.isEmpty ? 'Vui lòng nhập mật khẩu hiện tại' : null,
+                validator: (v) => (v?.trim().isEmpty ?? true) ? 'Vui lòng nhập mật khẩu hiện tại' : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: newPassController,
                 style: const TextStyle(color: Colors.white),
                 obscureText: true,
+                autocorrect: false,
+                enableSuggestions: false,
                 decoration: const InputDecoration(
                   labelText: 'Mật khẩu mới (tối thiểu 6 ký tự)',
                   labelStyle: TextStyle(color: Colors.white70),
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) => (v?.length ?? 0) < 6 ? 'Mật khẩu tối thiểu 6 ký tự' : null,
+                validator: (v) => (v?.trim().length ?? 0) < 6 ? 'Mật khẩu tối thiểu 6 ký tự (không tính khoảng trắng)' : null,
               ),
             ],
           ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () {
+              if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
+            },
             child: const Text('Hủy', style: TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
@@ -213,12 +204,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       'newPassword': newPassController.text.trim(),
                     }),
                   );
-                  navigator.pop();
                   if (response.statusCode == 200) {
+                    if (navigator.canPop()) navigator.pop();
                     HapticService.successFeedback();
-                    messenger.showSnackBar(
-                      const SnackBar(content: Text('Đổi mật khẩu thành công!'), backgroundColor: Colors.green),
-                    );
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      messenger.showSnackBar(
+                        const SnackBar(content: Text('Đổi mật khẩu thành công!'), backgroundColor: Colors.green),
+                      );
+                    });
                   } else {
                     final resData = jsonDecode(response.body);
                     messenger.showSnackBar(
@@ -226,7 +219,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     );
                   }
                 } catch (e) {
-                  navigator.pop();
                   messenger.showSnackBar(
                     SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
                   );
@@ -243,6 +235,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _showChangePinDialog() {
     HapticService.selectionFeedback();
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.user;
+    final bool hasPin = user?['hasPin'] == true || (user?['hasPin'] != false && user?['pin'] != null);
+
     final currentPinController = TextEditingController();
     final newPinController = TextEditingController();
     final formKey = GlobalKey<FormState>();
@@ -251,50 +247,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF16213E),
-        title: const Text('Đổi Mã PIN Bảo Mật', style: TextStyle(color: Colors.white)),
+        title: Text(hasPin ? 'Đổi Mã PIN Bảo Mật' : 'Tạo Mã PIN Bảo Mật', style: const TextStyle(color: Colors.white)),
         content: Form(
           key: formKey,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextFormField(
-                controller: currentPinController,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                style: const TextStyle(color: Colors.white),
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Mã PIN hiện tại',
-                  labelStyle: TextStyle(color: Colors.white70),
-                  border: OutlineInputBorder(),
+              if (hasPin) ...[
+                TextFormField(
+                  controller: currentPinController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  style: const TextStyle(color: Colors.white),
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Mã PIN hiện tại (6 chữ số)',
+                    labelStyle: TextStyle(color: Colors.white70),
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (v) => (v?.length ?? 0) != 6 || !RegExp(r'^\d+$').hasMatch(v ?? '') ? 'Mã PIN hiện tại phải gồm đúng 6 chữ số' : null,
                 ),
-              ),
-              const SizedBox(height: 12),
+                const SizedBox(height: 12),
+              ],
               TextFormField(
                 controller: newPinController,
                 keyboardType: TextInputType.number,
                 maxLength: 6,
                 style: const TextStyle(color: Colors.white),
                 obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Mã PIN mới (bắt buộc 6 chữ số)',
-                  labelStyle: TextStyle(color: Colors.white70),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: hasPin ? 'Mã PIN mới (bắt buộc 6 chữ số)' : 'Mã PIN 6 chữ số',
+                  labelStyle: const TextStyle(color: Colors.white70),
+                  border: const OutlineInputBorder(),
                 ),
-                validator: (v) => (v?.length ?? 0) != 6 || !RegExp(r'^\d+$').hasMatch(v ?? '') ? 'Mã PIN phải gồm đúng 6 chữ số' : null,
+                validator: (v) => (v?.length ?? 0) != 6 || !RegExp(r'^\d+$').hasMatch(v ?? '') ? 'Mã PIN mới phải gồm đúng 6 chữ số' : null,
               ),
             ],
           ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () {
+              if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
+            },
             child: const Text('Hủy', style: TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
             onPressed: () async {
               if (formKey.currentState!.validate()) {
-                final authProvider = Provider.of<AuthProvider>(context, listen: false);
                 final navigator = Navigator.of(ctx);
                 final messenger = ScaffoldMessenger.of(context);
                 try {
@@ -306,20 +306,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       'newPin': newPinController.text.trim(),
                     }),
                   );
-                  navigator.pop();
                   if (response.statusCode == 200) {
+                    if (navigator.canPop()) navigator.pop();
                     HapticService.successFeedback();
-                    messenger.showSnackBar(
-                      const SnackBar(content: Text('Đổi Mã PIN thành công!'), backgroundColor: Colors.green),
-                    );
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text(hasPin ? 'Đổi Mã PIN thành công!' : 'Tạo Mã PIN thành công!'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    });
+                    await authProvider.fetchUserProfile();
                   } else {
                     final resData = jsonDecode(response.body);
                     messenger.showSnackBar(
-                      SnackBar(content: Text(resData['error'] ?? 'Đổi PIN thất bại'), backgroundColor: Colors.red),
+                      SnackBar(content: Text(resData['error'] ?? 'Thao tác thất bại'), backgroundColor: Colors.red),
                     );
                   }
                 } catch (e) {
-                  navigator.pop();
                   messenger.showSnackBar(
                     SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
                   );
@@ -327,7 +332,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
-            child: const Text('Đổi Mã PIN'),
+            child: Text(hasPin ? 'Đổi Mã PIN' : 'Tạo Mã PIN', style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -361,7 +366,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   labelStyle: TextStyle(color: Colors.white70),
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) => v!.isEmpty ? 'Vui lòng nhập mật khẩu' : null,
+                validator: (v) => (v?.trim().isEmpty ?? true) ? 'Vui lòng nhập mật khẩu' : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -382,7 +387,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () {
+              if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
+            },
             child: const Text('Hủy', style: TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
@@ -400,12 +407,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       'newPin': newPinController.text.trim(),
                     }),
                   );
-                  navigator.pop();
                   if (response.statusCode == 200) {
+                    if (navigator.canPop()) navigator.pop();
                     HapticService.successFeedback();
-                    messenger.showSnackBar(
-                      const SnackBar(content: Text('Đặt lại Mã PIN thành công!'), backgroundColor: Colors.green),
-                    );
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      messenger.showSnackBar(
+                        const SnackBar(content: Text('Đặt lại Mã PIN thành công!'), backgroundColor: Colors.green),
+                      );
+                    });
+                    await authProvider.fetchUserProfile();
                   } else {
                     final resData = jsonDecode(response.body);
                     messenger.showSnackBar(
@@ -413,7 +423,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     );
                   }
                 } catch (e) {
-                  navigator.pop();
                   messenger.showSnackBar(
                     SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
                   );
@@ -516,10 +525,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final autoLockService = Provider.of<AutoLockService>(context);
     final authProvider = Provider.of<AuthProvider>(context);
 
-    final String username = _userProfile?['username'] ?? authProvider.user?['username'] ?? 'User';
-    final String email = _userProfile?['email'] ?? authProvider.user?['email'] ?? 'user@example.com';
-    final String fullName = (_userProfile?['fullName'] ?? '').toString();
-    final String phone = (_userProfile?['phone'] ?? '').toString();
+    final user = authProvider.user;
+    final String username = (user?['username'] ?? 'User').toString();
+    final String email = (user?['email'] ?? 'user@example.com').toString();
+    final String fullName = (user?['fullName'] ?? '').toString();
+    final String phone = (user?['phone'] ?? '').toString();
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -628,8 +638,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   decoration: const BoxDecoration(color: Colors.teal, shape: BoxShape.circle),
                   child: const Icon(Icons.pin, color: Colors.white, size: 18),
                 ),
-                title: Text(localeProvider.getText('change_pin'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                subtitle: const Text('Đổi Mã PIN bảo mật 6 chữ số', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                title: Text(
+                  (user?['hasPin'] == true || (user?['hasPin'] != false && user?['pin'] != null))
+                      ? localeProvider.getText('change_pin')
+                      : 'Tạo Mã PIN Bảo Mật',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(
+                  (user?['hasPin'] == true || (user?['hasPin'] != false && user?['pin'] != null))
+                      ? 'Đổi Mã PIN bảo mật 6 chữ số'
+                      : 'Tạo mới Mã PIN 6 chữ số cho tài khoản',
+                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                ),
                 trailing: const Icon(Icons.chevron_right, color: Colors.white54),
                 onTap: _showChangePinDialog,
               ),
@@ -699,17 +719,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const Divider(color: Colors.white12, height: 1),
               ListTile(
+                leading: const Icon(Icons.attach_money, color: Colors.greenAccent),
+                title: Text(localeProvider.getText('currency_unit'), style: const TextStyle(color: Colors.white)),
+                subtitle: Text(
+                  localeProvider.isVND ? 'VND (₫)' : 'USD (\$)',
+                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+                trailing: DropdownButton<String>(
+                  value: localeProvider.currency,
+                  dropdownColor: const Color(0xFF16213E),
+                  style: const TextStyle(color: Colors.white),
+                  items: [
+                    DropdownMenuItem(value: 'VND', child: Text(localeProvider.getText('currency_vnd'))),
+                    DropdownMenuItem(value: 'USD', child: Text(localeProvider.getText('currency_usd'))),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) {
+                      HapticService.selectionFeedback();
+                      localeProvider.setCurrency(val);
+                    }
+                  },
+                ),
+              ),
+              const Divider(color: Colors.white12, height: 1),
+              ListTile(
                 leading: const Icon(Icons.timer_outlined, color: Colors.orangeAccent),
                 title: Text(localeProvider.getText('auto_lock'), style: const TextStyle(color: Colors.white)),
-                subtitle: Text('${autoLockService.autoLockSeconds} giây', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                subtitle: Text(
+                  autoLockService.autoLockSeconds == 0
+                      ? 'Tắt'
+                      : autoLockService.autoLockSeconds == 60
+                          ? '1 phút'
+                          : autoLockService.autoLockSeconds == 300
+                              ? '5 phút (Mặc định)'
+                              : autoLockService.autoLockSeconds == 600
+                                  ? '10 phút'
+                                  : '${autoLockService.autoLockSeconds} giây',
+                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                ),
                 trailing: DropdownButton<int>(
-                  value: autoLockService.autoLockSeconds,
+                  value: [0, 60, 300, 600].contains(autoLockService.autoLockSeconds)
+                      ? autoLockService.autoLockSeconds
+                      : 300,
                   dropdownColor: const Color(0xFF16213E),
                   style: const TextStyle(color: Colors.white),
                   items: const [
-                    DropdownMenuItem(value: 30, child: Text('30s')),
-                    DropdownMenuItem(value: 60, child: Text('60s')),
+                    DropdownMenuItem(value: 0, child: Text('Tắt')),
+                    DropdownMenuItem(value: 60, child: Text('1 phút')),
                     DropdownMenuItem(value: 300, child: Text('5 phút')),
+                    DropdownMenuItem(value: 600, child: Text('10 phút')),
                   ],
                   onChanged: (val) {
                     if (val != null) {
@@ -754,8 +812,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           width: double.infinity,
           child: OutlinedButton.icon(
             onPressed: () {
+              final autoLockService = Provider.of<AutoLockService>(context, listen: false);
+              autoLockService.unlock();
               authProvider.logout();
-              Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+              navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (route) => false);
             },
             icon: const Icon(Icons.logout),
             label: Text(localeProvider.getText('logout')),

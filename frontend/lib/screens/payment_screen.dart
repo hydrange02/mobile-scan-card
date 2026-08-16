@@ -5,8 +5,10 @@ import 'dart:convert';
 import '../services/api_config.dart';
 import '../services/haptic_service.dart';
 import '../services/nfc_service.dart';
+import '../services/card_utils.dart';
 import '../providers/auth_provider.dart';
 import '../providers/locale_provider.dart';
+import '../providers/theme_provider.dart';
 
 class PaymentScreen extends StatefulWidget {
   const PaymentScreen({super.key});
@@ -29,7 +31,21 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _amountController.addListener(_onAmountChanged);
     _fetchCards();
+  }
+
+  void _onAmountChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _amountController.removeListener(_onAmountChanged);
+    _amountController.dispose();
+    _noteController.dispose();
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchCards() async {
@@ -66,6 +82,53 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         });
       }
     }
+  }
+
+  Future<void> _simulateNfcScanAndPay() async {
+    HapticService.selectionFeedback();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF16213E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            SizedBox(height: 12),
+            Icon(Icons.nfc, size: 70, color: Colors.cyanAccent),
+            SizedBox(height: 16),
+            Text(
+              'Đang Kết Nối Sóng NFC 1-Chạm...',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Giữ thiết bị gần thẻ hoặc máy POS...',
+              style: TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+            SizedBox(height: 20),
+            LinearProgressIndicator(color: Colors.cyanAccent),
+            SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      final nfcRes = await NfcService().readAndValidateTag();
+      if (nfcRes.containsKey('error')) {
+        await Future.delayed(const Duration(milliseconds: 1200));
+      }
+    } catch (_) {
+      await Future.delayed(const Duration(milliseconds: 1200));
+    }
+
+    if (mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+
+    await _processPaymentApi(method: 'Chạm NFC 1-Chạm');
   }
 
   Future<void> _processPaymentApi({required String method}) async {
@@ -127,6 +190,16 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
     if (_selectedCard == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng chọn hoặc thêm thẻ thanh toán vào ví trước!'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    if (CardUtils.isCardExpired(_selectedCard?['expiryDate'])) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Thẻ này đã hết hạn sử dụng! Vui lòng cập nhật hạn thẻ hoặc chọn thẻ khác.'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -193,6 +266,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       return;
     }
 
+    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
     final pinController = TextEditingController();
     final pinFormKey = GlobalKey<FormState>();
     bool isVerifyingPin = false;
@@ -214,7 +288,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
               ),
               const SizedBox(height: 4),
               Text(
-                'Số tiền: \$${amount.toStringAsFixed(2)} - ${_selectedCard?['cardName'] ?? ''}',
+                'Số tiền: ${localeProvider.formatAmount(amount)} - ${_selectedCard?['cardName'] ?? ''}',
                 style: const TextStyle(color: Colors.cyanAccent, fontSize: 13),
               ),
             ],
@@ -310,55 +384,8 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
     );
   }
 
-  void _startNfcPayment() async {
-    HapticService.selectionFeedback();
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF16213E),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            SizedBox(height: 12),
-            Icon(Icons.nfc, size: 64, color: Colors.cyanAccent),
-            SizedBox(height: 16),
-            Text(
-              'Đang chờ chạm NFC...',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Đưa thiết bị hoặc thẻ NFC chạm vào mặt lưng để thanh toán',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white70, fontSize: 12),
-            ),
-            SizedBox(height: 20),
-            CircularProgressIndicator(color: Colors.cyanAccent),
-          ],
-        ),
-      ),
-    );
-
-    final result = await NfcService().readAndValidateTag();
-    if (mounted) Navigator.pop(context); // Close scanning dialog
-
-    if (result.containsKey('id') || result['valid'] == true) {
-      _processPaymentApi(method: 'Chạm NFC 1-Chạm');
-    } else {
-      if (mounted) {
-        HapticService.errorFeedback();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['error'] ?? 'Không nhận diện được thẻ NFC. Vui lòng thử lại.'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
-    }
-  }
-
   void _showSuccessPaymentDialog(double amount, String method) {
+    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -378,9 +405,12 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
               style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
             ),
             const SizedBox(height: 8),
-            Text(
-              '-\$${amount.toStringAsFixed(2)}',
-              style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 28),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                '-${localeProvider.formatAmount(amount)}',
+                style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 28),
+              ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -403,21 +433,22 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
   @override
   Widget build(BuildContext context) {
     final localeProvider = Provider.of<LocaleProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: themeProvider.backgroundColor,
       appBar: AppBar(
-        title: const Text('Thanh Toán NFC & Quét QR'),
+        title: Text(localeProvider.getText('payment_title')),
         backgroundColor: Colors.transparent,
         elevation: 0,
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.cyanAccent,
           labelColor: Colors.cyanAccent,
-          unselectedLabelColor: Colors.white54,
-          tabs: const [
-            Tab(icon: Icon(Icons.nfc), text: 'Chạm NFC'),
-            Tab(icon: Icon(Icons.qr_code_scanner), text: 'Quét Mã QR'),
+          unselectedLabelColor: themeProvider.subtitleColor,
+          tabs: [
+            Tab(icon: const Icon(Icons.nfc), text: localeProvider.getText('nfc_tab')),
+            Tab(icon: const Icon(Icons.qr_code_scanner), text: localeProvider.getText('qr_tab')),
           ],
         ),
       ),
@@ -452,9 +483,18 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                 ),
                 items: _cards.map((c) {
+                  final String name = c['cardName']?.toString() ?? 'Thẻ';
+                  final String numStr = c['cardNumber']?.toString() ?? '0000';
+                  final String last4 = numStr.length >= 4 ? numStr.substring(numStr.length - 4) : numStr;
+                  final bool isExp = CardUtils.isCardExpired(c['expiryDate']);
                   return DropdownMenuItem<Map<String, dynamic>>(
                     value: c,
-                    child: Text('${c['cardName']} (${c['cardNumber'].toString().substring(c['cardNumber'].toString().length - 4)})'),
+                    child: Text(
+                      '$name (**** $last4)${isExp ? " [ĐÃ HẾT HẠN]" : ""}',
+                      style: TextStyle(color: isExp ? Colors.redAccent : Colors.white, fontWeight: isExp ? FontWeight.bold : FontWeight.normal),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   );
                 }).toList(),
                 onChanged: (val) => setState(() => _selectedCard = val),
@@ -463,14 +503,15 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         const SizedBox(height: 20),
 
         // Amount Input
-        const Text('Số Tiền Thanh Toán (\$)', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold)),
+        Text('Số Tiền Thanh Toán (${localeProvider.currencySymbol})', style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         TextField(
           controller: _amountController,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           style: const TextStyle(color: Colors.cyanAccent, fontSize: 26, fontWeight: FontWeight.bold),
+          onChanged: (val) => setState(() {}),
           decoration: InputDecoration(
-            prefixText: '\$ ',
+            prefixText: '${localeProvider.currencySymbol} ',
             prefixStyle: const TextStyle(color: Colors.cyanAccent, fontSize: 26),
             filled: true,
             fillColor: Colors.white.withValues(alpha: 0.05),
@@ -480,22 +521,30 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
 
         const SizedBox(height: 12),
 
-        // Quick Amount Chips
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: ['10.00', '25.00', '50.00', '100.00'].map((amt) {
-            final double currentVal = double.tryParse(_amountController.text.trim()) ?? -1.0;
-            final double chipVal = double.tryParse(amt) ?? -2.0;
-            final bool isSelected = currentVal == chipVal;
+        // Quick Amount Chips (Horizontally Scrollable to prevent overflow in VND)
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: (localeProvider.isVND
+                    ? ['50000', '100000', '200000', '500000', '1000000']
+                    : ['10.00', '25.00', '50.00', '100.00'])
+                .map((amt) {
+              final double currentVal = double.tryParse(_amountController.text.trim()) ?? -1.0;
+              final double chipVal = double.tryParse(amt) ?? -2.0;
+              final bool isSelected = currentVal == chipVal;
 
-            return ChoiceChip(
-              label: Text('\$$amt'),
-              selected: isSelected,
-              onSelected: (_) => setState(() => _amountController.text = amt),
-              selectedColor: Colors.purpleAccent,
-              labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.white70),
-            );
-          }).toList(),
+              return Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: ChoiceChip(
+                  label: Text(localeProvider.formatAmount(chipVal)),
+                  selected: isSelected,
+                  onSelected: (_) => setState(() => _amountController.text = amt),
+                  selectedColor: Colors.purpleAccent,
+                  labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.white70),
+                ),
+              );
+            }).toList(),
+          ),
         ),
 
         const SizedBox(height: 20),
@@ -523,10 +572,13 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                 ? null
                 : () => _verifyPinBeforePayment(
                       method: 'Chạm NFC 1-Chạm',
-                      onSuccess: _startNfcPayment,
+                      onSuccess: _simulateNfcScanAndPay,
                     ),
             icon: const Icon(Icons.nfc, size: 28),
-            label: const Text('CHẠM THẺ NFC ĐỂ THANH TOÁN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            label: const FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text('CHẠM THẺ NFC ĐỂ THANH TOÁN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.cyanAccent,
               foregroundColor: Colors.black,
@@ -535,6 +587,130 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
           ),
         ),
       ],
+    );
+  }
+
+  void _showQrScannerModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF16213E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.75,
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.qr_code_scanner_rounded, color: Colors.cyanAccent, size: 28),
+                        SizedBox(width: 10),
+                        Text('Ống Kính Quét Mã QR', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white54),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Camera Scanner Viewfinder Frame
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.5), width: 1.5),
+                    ),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Viewfinder Grid Overlay
+                        Container(
+                          width: 220,
+                          height: 220,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.cyanAccent, width: 3),
+                          ),
+                          child: Stack(
+                            children: [
+                              Align(
+                                alignment: Alignment.center,
+                                child: Container(
+                                  width: 200,
+                                  height: 2,
+                                  color: Colors.cyanAccent.withValues(alpha: 0.8),
+                                ),
+                              ),
+                              const Center(
+                                child: Icon(Icons.center_focus_weak_rounded, size: 64, color: Colors.cyanAccent),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 20,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text(
+                              'Đang quét... Hướng máy ảnh vào Mã QR',
+                              style: TextStyle(color: Colors.white70, fontSize: 12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Simulated QR Scan & PIN Verification Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _verifyPinBeforePayment(
+                        method: 'Quét Mã QR',
+                        onSuccess: () => _processPaymentApi(method: 'Quét Mã QR'),
+                      );
+                    },
+                    icon: const Icon(Icons.verified_user_rounded),
+                    label: const Text('XÁC THỰC PIN & THANH TOÁN (MÁY ẢO / MÁY THẬT)'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.cyanAccent,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -578,9 +754,12 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
               ),
 
               const SizedBox(height: 16),
-              Text(
-                '\$${_amountController.text}',
-                style: const TextStyle(color: Colors.purple, fontSize: 28, fontWeight: FontWeight.bold),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  localeProvider.formatAmount(double.tryParse(_amountController.text) ?? 0),
+                  style: const TextStyle(color: Colors.purple, fontSize: 28, fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
@@ -591,10 +770,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         SizedBox(
           height: 52,
           child: ElevatedButton.icon(
-            onPressed: () => _verifyPinBeforePayment(
-              method: 'Quét Mã QR',
-              onSuccess: () => _processPaymentApi(method: 'Quét Mã QR'),
-            ),
+            onPressed: _showQrScannerModal,
             icon: const Icon(Icons.qr_code_scanner),
             label: const Text('QUÉT MÃ QR KHÁCH HÀNG / CỬA HÀNG'),
             style: ElevatedButton.styleFrom(

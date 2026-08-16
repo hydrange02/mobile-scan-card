@@ -9,7 +9,10 @@ router.post('/update-password', async (req, res) => {
   try {
     const userId = req.user.userId;
     const { currentPassword, newPassword } = req.body;
-    if (!currentPassword || !newPassword) {
+    const cleanCurrentPassword = currentPassword != null ? String(currentPassword).trim() : '';
+    const cleanNewPassword = newPassword != null ? String(newPassword).trim() : '';
+
+    if (!cleanCurrentPassword || !cleanNewPassword) {
       return res.status(400).json({ error: 'Current password and new password are required' });
     }
 
@@ -18,16 +21,16 @@ router.post('/update-password', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const isValid = await bcrypt.compare(currentPassword, user.password);
+    const isValid = await bcrypt.compare(cleanCurrentPassword, user.password);
     if (!isValid) {
       return res.status(400).json({ error: 'Incorrect current password' });
     }
 
-    if (newPassword.length < 6) {
-      return res.status(400).json({ error: 'Mật khẩu mới phải từ 6 ký tự trở lên' });
+    if (cleanNewPassword.length < 6) {
+      return res.status(400).json({ error: 'Mật khẩu mới phải từ 6 ký tự trở lên (không tính khoảng trắng đầu/cuối)' });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await bcrypt.hash(cleanNewPassword, 10);
     await prisma.user.update({
       where: { id: user.id },
       data: { password: hashedPassword },
@@ -57,7 +60,7 @@ router.post('/update-pin', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    if (user.pin) {
+    if (user.pin && user.pin.trim() !== '') {
       if (!strCurrentPin) {
         return res.status(400).json({ error: 'Vui lòng nhập Mã PIN hiện tại' });
       }
@@ -113,9 +116,10 @@ router.post('/reset-pin', async (req, res) => {
   try {
     const userId = req.user.userId;
     const { password, newPin } = req.body;
+    const cleanPassword = password != null ? String(password).trim() : '';
     const strNewPin = newPin != null ? String(newPin).trim() : '';
 
-    if (!password || !strNewPin) {
+    if (!cleanPassword || !strNewPin) {
       return res.status(400).json({ error: 'Vui lòng nhập mật khẩu tài khoản và Mã PIN mới' });
     }
     if (!/^\d{6}$/.test(strNewPin)) {
@@ -127,7 +131,7 @@ router.post('/reset-pin', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const isValidPassword = await bcrypt.compare(password, user.password);
+    const isValidPassword = await bcrypt.compare(cleanPassword, user.password);
     if (!isValidPassword) {
       return res.status(400).json({ error: 'Mật khẩu tài khoản không đúng' });
     }

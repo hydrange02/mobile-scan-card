@@ -3,9 +3,11 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'dart:convert';
 import '../providers/auth_provider.dart';
+import '../providers/locale_provider.dart';
 import '../services/api_config.dart';
 import '../services/haptic_service.dart';
 import '../services/nfc_service.dart';
+import '../services/card_utils.dart';
 import 'card_detail_screen.dart';
 
 class WalletScreen extends StatefulWidget {
@@ -203,11 +205,21 @@ class _WalletScreenState extends State<WalletScreen> {
                 controller: nameController,
                 style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
-                  labelText: 'Tên thẻ (vd: Visa Gold, Mastercard)',
+                  labelText: 'Tên gợi nhớ của thẻ (Tùy chọn)',
+                  hintText: 'Để trống sẽ tự tạo: Thẻ Visa (4 số cuối)',
+                  hintStyle: TextStyle(color: Colors.white38, fontSize: 12),
                   labelStyle: TextStyle(color: Colors.white70),
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) => v!.isEmpty ? 'Vui lòng nhập tên thẻ' : null,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return null; // Allow empty to trigger auto name
+                  final clean = v.trim();
+                  if (clean.length < 2 || clean.length > 50) return 'Tên thẻ phải từ 2 đến 50 ký tự';
+                  if (RegExp(r'[<>{}[\]\\\/@#$%^&*()=~|]').hasMatch(clean)) {
+                    return 'Tên thẻ không được chứa các ký tự đặc biệt';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 14),
               TextFormField(
@@ -303,6 +315,7 @@ class _WalletScreenState extends State<WalletScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final localeProvider = Provider.of<LocaleProvider>(context);
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: _isLoading
@@ -387,26 +400,32 @@ class _WalletScreenState extends State<WalletScreen> {
                     final maskedNumber = number.length > 4
                         ? "**** **** **** ${number.substring(number.length - 4)}"
                         : number;
-                    final double balance = (card['balance']?.toDouble() ?? 0.0);
+                    final dynamic rawBal = card['balance'];
+                    final double balance = rawBal is num ? rawBal.toDouble() : (double.tryParse(rawBal?.toString() ?? '') ?? 0.0);
+
+                    final bool isExpired = CardUtils.isCardExpired(card['expiryDate']);
 
                     return InkWell(
-                      onTap: () {
+                      onTap: () async {
                         HapticService.selectionFeedback();
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => CardDetailScreen(cardData: card)));
+                        await Navigator.push(context, MaterialPageRoute(builder: (_) => CardDetailScreen(cardData: card)));
+                        _fetchCards();
                       },
                       borderRadius: BorderRadius.circular(20),
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 16),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: isDefault
-                                ? [const Color(0xFF6200EE), const Color(0xFF3700B3)]
-                                : [const Color(0xFF2C3E50), const Color(0xFF000000)],
+                            colors: isExpired
+                                ? [const Color(0xFF37474F), const Color(0xFF212121)]
+                                : isDefault
+                                    ? [const Color(0xFF6200EE), const Color(0xFF3700B3)]
+                                    : [const Color(0xFF2C3E50), const Color(0xFF000000)],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(20),
-                          border: isDefault ? Border.all(color: Colors.amber, width: 1.5) : null,
+                          border: isDefault ? Border.all(color: Colors.amber, width: 1.5) : (isExpired ? Border.all(color: Colors.redAccent.withValues(alpha: 0.5), width: 1) : null),
                           boxShadow: const [
                             BoxShadow(color: Colors.black45, blurRadius: 10, offset: Offset(0, 4))
                           ],
@@ -424,7 +443,7 @@ class _WalletScreenState extends State<WalletScreen> {
                                       Text(
                                         card['cardName'].toString().toUpperCase(),
                                         style: TextStyle(
-                                          color: isDefault ? Colors.amber : Colors.white,
+                                          color: isExpired ? Colors.white70 : (isDefault ? Colors.amber : Colors.white),
                                           fontWeight: FontWeight.bold,
                                           fontSize: 16,
                                         ),
@@ -444,15 +463,36 @@ class _WalletScreenState extends State<WalletScreen> {
                                           ),
                                         ),
                                       ],
+                                      if (isExpired) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.redAccent.withValues(alpha: 0.2),
+                                            borderRadius: BorderRadius.circular(10),
+                                            border: Border.all(color: Colors.redAccent, width: 0.8),
+                                          ),
+                                          child: const Text(
+                                            'ĐÃ HẾT HẠN',
+                                            style: TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                   Row(
                                     children: [
                                       if (!isDefault)
                                         IconButton(
-                                          icon: const Icon(Icons.star_border, color: Colors.amber),
-                                          tooltip: 'Đặt làm mặc định',
-                                          onPressed: () => _setDefaultCard(card['id']),
+                                          icon: Icon(Icons.star_border, color: isExpired ? Colors.grey : Colors.amber),
+                                          tooltip: isExpired ? 'Không thể đặt thẻ hết hạn làm mặc định' : 'Đặt làm mặc định',
+                                          onPressed: isExpired
+                                              ? () {
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    const SnackBar(content: Text('Không thể chọn thẻ đã hết hạn làm thẻ mặc định! Vui lòng cập nhật hạn thẻ trước.')),
+                                                  );
+                                                }
+                                              : () => _setDefaultCard(card['id']),
                                         ),
                                       IconButton(
                                         icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
@@ -464,9 +504,13 @@ class _WalletScreenState extends State<WalletScreen> {
                                 ],
                               ),
                               const SizedBox(height: 12),
-                              Text(
-                                'Số dư: \$${balance.toStringAsFixed(2)}',
-                                style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'Số dư: ${localeProvider.formatAmount(balance)}',
+                                  style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500),
+                                ),
                               ),
                               const SizedBox(height: 16),
                               Row(

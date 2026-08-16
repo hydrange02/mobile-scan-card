@@ -5,6 +5,8 @@ import 'dart:convert';
 import '../providers/auth_provider.dart';
 import '../providers/locale_provider.dart';
 import '../services/api_config.dart';
+import '../services/autolock_service.dart';
+import '../main.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -73,6 +75,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     setState(() => _isLoadingPin = true);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final bool hasPin = authProvider.user?['hasPin'] == true || (authProvider.user?['hasPin'] != false && authProvider.user?['pin'] != null);
 
     try {
       final response = await http.post(
@@ -87,13 +90,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (response.statusCode == 200) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đổi Mã PIN thành công!'), backgroundColor: Colors.green),
+          SnackBar(
+            content: Text(hasPin ? 'Đổi Mã PIN thành công!' : 'Tạo Mã PIN thành công!'),
+            backgroundColor: Colors.green,
+          ),
         );
         _currentPinController.clear();
         _newPinController.clear();
+        await authProvider.fetchUserProfile();
       } else {
         final resData = jsonDecode(response.body);
-        throw Exception(resData['error'] ?? 'Không thể đổi PIN');
+        throw Exception(resData['error'] ?? 'Không thể cập nhật PIN');
       }
     } catch (e) {
       if (!mounted) return;
@@ -129,12 +136,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 controller: resetPasswordController,
                 style: const TextStyle(color: Colors.white),
                 obscureText: true,
+                autocorrect: false,
+                enableSuggestions: false,
                 decoration: const InputDecoration(
                   labelText: 'Mật khẩu đăng nhập',
                   labelStyle: TextStyle(color: Colors.white70),
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) => v!.isEmpty ? 'Vui lòng nhập mật khẩu' : null,
+                validator: (v) => (v?.trim().isEmpty ?? true) ? 'Vui lòng nhập mật khẩu' : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -155,7 +164,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () {
+              if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
+            },
             child: const Text('Hủy', style: TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
@@ -173,11 +184,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       'newPin': resetNewPinController.text.trim(),
                     }),
                   );
-                  navigator.pop();
                   if (response.statusCode == 200) {
-                    messenger.showSnackBar(
-                      const SnackBar(content: Text('Đặt lại Mã PIN thành công!'), backgroundColor: Colors.green),
-                    );
+                    if (navigator.canPop()) navigator.pop();
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      messenger.showSnackBar(
+                        const SnackBar(content: Text('Đặt lại Mã PIN thành công!'), backgroundColor: Colors.green),
+                      );
+                    });
+                    await authProvider.fetchUserProfile();
                   } else {
                     final resData = jsonDecode(response.body);
                     messenger.showSnackBar(
@@ -185,7 +199,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     );
                   }
                 } catch (e) {
-                  navigator.pop();
                   messenger.showSnackBar(
                     SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
                   );
@@ -203,6 +216,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final localeProvider = Provider.of<LocaleProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
 
     return Container(
       decoration: const BoxDecoration(
@@ -255,7 +269,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           border: const OutlineInputBorder(),
                         ),
                         obscureText: true,
-                        validator: (v) => v!.isEmpty ? localeProvider.getText('required') : null,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        validator: (v) => (v?.trim().isEmpty ?? true) ? localeProvider.getText('required') : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
@@ -267,7 +283,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           border: const OutlineInputBorder(),
                         ),
                         obscureText: true,
-                        validator: (v) => (v?.length ?? 0) < 6 ? 'Tối thiểu 6 ký tự' : null,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        validator: (v) => (v?.trim().length ?? 0) < 6 ? 'Tối thiểu 6 ký tự (không tính khoảng trắng)' : null,
                       ),
                       const SizedBox(height: 16),
                       SizedBox(
@@ -307,41 +325,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               const Icon(Icons.pin_outlined, color: Colors.cyanAccent),
                               const SizedBox(width: 8),
                               Text(
-                                localeProvider.getText('change_pin'),
+                                (authProvider.user?['hasPin'] == true || (authProvider.user?['hasPin'] != false && authProvider.user?['pin'] != null))
+                                    ? localeProvider.getText('change_pin')
+                                    : 'Tạo Mã PIN Bảo Mật',
                                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                               ),
                             ],
                           ),
-                          TextButton(
-                            onPressed: _showForgotPinDialog,
-                            child: Text(
-                              localeProvider.getText('forgot_pin'),
-                              style: const TextStyle(color: Colors.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold),
+                          if (authProvider.user?['hasPin'] == true || (authProvider.user?['hasPin'] != false && authProvider.user?['pin'] != null))
+                            TextButton(
+                              onPressed: _showForgotPinDialog,
+                              child: Text(
+                                localeProvider.getText('forgot_pin'),
+                                style: const TextStyle(color: Colors.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
                             ),
-                          ),
                         ],
                       ),
                       const SizedBox(height: 14),
-                      TextFormField(
-                        controller: _currentPinController,
-                        keyboardType: TextInputType.number,
-                        maxLength: 6,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          labelText: localeProvider.getText('current_pin'),
-                          labelStyle: const TextStyle(color: Colors.white70),
-                          border: const OutlineInputBorder(),
+                      if (authProvider.user?['hasPin'] == true || (authProvider.user?['hasPin'] != false && authProvider.user?['pin'] != null)) ...[
+                        TextFormField(
+                          controller: _currentPinController,
+                          keyboardType: TextInputType.number,
+                          maxLength: 6,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            labelText: localeProvider.getText('current_pin'),
+                            labelStyle: const TextStyle(color: Colors.white70),
+                            border: const OutlineInputBorder(),
+                          ),
+                          obscureText: true,
+                          validator: (v) => (v?.length ?? 0) != 6 || !RegExp(r'^\d+$').hasMatch(v ?? '') ? 'Vui lòng nhập đúng 6 chữ số Mã PIN hiện tại' : null,
                         ),
-                        obscureText: true,
-                      ),
-                      const SizedBox(height: 12),
+                        const SizedBox(height: 12),
+                      ],
                       TextFormField(
                         controller: _newPinController,
                         keyboardType: TextInputType.number,
                         maxLength: 6,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
-                          labelText: localeProvider.getText('new_pin'),
+                          labelText: (authProvider.user?['hasPin'] == true || (authProvider.user?['hasPin'] != false && authProvider.user?['pin'] != null))
+                              ? localeProvider.getText('new_pin')
+                              : 'Mã PIN 6 chữ số',
                           labelStyle: const TextStyle(color: Colors.white70),
                           border: const OutlineInputBorder(),
                         ),
@@ -356,7 +382,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
                           child: _isLoadingPin
                               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                              : Text(localeProvider.getText('update_pin'), style: const TextStyle(color: Colors.white)),
+                              : Text(
+                                  (authProvider.user?['hasPin'] == true || (authProvider.user?['hasPin'] != false && authProvider.user?['pin'] != null))
+                                      ? localeProvider.getText('update_pin')
+                                      : 'Tạo Mã PIN',
+                                  style: const TextStyle(color: Colors.white),
+                                ),
                         ),
                       ),
                     ],
@@ -401,8 +432,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: OutlinedButton.icon(
                 onPressed: () {
                   final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                  final autoLockService = Provider.of<AutoLockService>(context, listen: false);
+                  autoLockService.unlock();
                   authProvider.logout();
-                  Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+                  navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (route) => false);
                 },
                 icon: const Icon(Icons.logout),
                 label: Text(localeProvider.getText('logout')),
