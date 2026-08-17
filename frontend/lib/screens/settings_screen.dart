@@ -758,7 +758,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         if (user?['phone'] != null && user!['phone'].toString().isNotEmpty) ...[
                           const SizedBox(height: 2),
                           Text(
-                            'SĐT: ${user['phone']}',
+                            '${localeProvider.isVietnamese ? "SĐT" : "Tel"}: ${user['phone']}',
                             style: TextStyle(fontSize: 12, color: themeProvider.accentColor, fontWeight: FontWeight.bold),
                           ),
                         ],
@@ -950,7 +950,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ListTile(
                     leading: const Icon(Icons.security, color: Colors.green),
                     title: Text(localeProvider.getText('export_backup'), style: TextStyle(color: themeProvider.textColor)),
-                    subtitle: Text('Mã hóa AES-256 dữ liệu ví', style: TextStyle(color: themeProvider.subtitleColor, fontSize: 12)),
+                    subtitle: Text(localeProvider.isVietnamese ? 'Mã hóa AES-256 dữ liệu ví' : 'AES-256 wallet data encryption', style: TextStyle(color: themeProvider.subtitleColor, fontSize: 12)),
                     onTap: () {
                       HapticService.successFeedback();
                       final sampleCards = [
@@ -965,6 +965,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ListTile(
                     leading: const Icon(Icons.restore, color: Colors.teal),
                     title: Text(localeProvider.getText('import_backup'), style: TextStyle(color: themeProvider.textColor)),
+                    subtitle: Text(localeProvider.isVietnamese ? 'Khôi phục thẻ từ đoạn mã đã sao lưu' : 'Restore cards from backup payload', style: TextStyle(color: themeProvider.subtitleColor, fontSize: 12)),
                     onTap: () {
                       HapticService.selectionFeedback();
                       _showImportDialog(context);

@@ -49,8 +49,9 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
 
   void _showEditCardDialog() {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
     HapticService.selectionFeedback();
-    final holderController = TextEditingController(text: _card['cardHolder']?.toString() ?? 'Chủ Thẻ NFC');
+    final holderController = TextEditingController(text: _card['cardHolder']?.toString() ?? (localeProvider.isVietnamese ? 'Chủ Thẻ NFC' : 'NFC Cardholder'));
     final expiryController = TextEditingController(text: _card['expiryDate']?.toString() ?? '12/28');
     final phoneController = TextEditingController(text: _card['phone']?.toString() ?? '');
     final nameController = TextEditingController(text: _card['cardName']?.toString() ?? '');
@@ -61,7 +62,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: themeProvider.dialogBgColor,
-        title: Text('Cập Nhật Thông Tin Thẻ', style: TextStyle(color: themeProvider.textColor)),
+        title: Text(localeProvider.isVietnamese ? 'Cập Nhật Thông Tin Thẻ' : 'Update Card Information', style: TextStyle(color: themeProvider.textColor)),
         content: Form(
           key: formKey,
           child: SingleChildScrollView(
@@ -75,16 +76,16 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                   autocorrect: true,
                   style: TextStyle(color: themeProvider.textColor),
                   decoration: InputDecoration(
-                    labelText: 'Tên thẻ (Vd: Visa Gold, Ví Tiêu Dùng)',
+                    labelText: localeProvider.isVietnamese ? 'Tên thẻ (Vd: Visa Gold, Ví Tiêu Dùng)' : 'Card Name (e.g. Visa Gold, Salary)',
                     labelStyle: TextStyle(color: themeProvider.subtitleColor),
                     border: const OutlineInputBorder(),
                   ),
                   validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Vui lòng nhập tên thẻ';
+                    if (v == null || v.trim().isEmpty) return localeProvider.isVietnamese ? 'Vui lòng nhập tên thẻ' : 'Card name is required';
                     final clean = v.trim();
-                    if (clean.length < 2 || clean.length > 50) return 'Tên thẻ phải từ 2 đến 50 ký tự';
+                    if (clean.length < 2 || clean.length > 50) return '2 - 50 chars';
                     if (RegExp(r'[<>{}]').hasMatch(clean)) {
-                      return 'Tên thẻ chứa ký tự không hợp lệ';
+                      return 'Invalid characters';
                     }
                     return null;
                   },
@@ -97,16 +98,16 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                   autocorrect: true,
                   style: TextStyle(color: themeProvider.textColor),
                   decoration: InputDecoration(
-                    labelText: 'Tên chủ sở hữu (Vd: Nguyễn Văn A hoặc NGUYEN VAN A)',
+                    labelText: localeProvider.isVietnamese ? 'Tên chủ sở hữu (Vd: Nguyễn Văn A)' : 'Cardholder Name (e.g. John Doe)',
                     labelStyle: TextStyle(color: themeProvider.subtitleColor),
                     border: const OutlineInputBorder(),
                   ),
                   validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Vui lòng nhập tên chủ thẻ';
+                    if (v == null || v.trim().isEmpty) return localeProvider.isVietnamese ? 'Vui lòng nhập tên chủ thẻ' : 'Cardholder name required';
                     final clean = v.trim();
-                    if (clean.length < 2 || clean.length > 50) return 'Tên chủ thẻ phải từ 2 đến 50 ký tự';
+                    if (clean.length < 2 || clean.length > 50) return '2 - 50 chars';
                     if (RegExp(r'[<>{}]').hasMatch(clean)) {
-                      return 'Tên chủ thẻ chứa ký tự không hợp lệ';
+                      return 'Invalid characters';
                     }
                     return null;
                   },
@@ -116,14 +117,14 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                   controller: expiryController,
                   style: TextStyle(color: themeProvider.textColor),
                   decoration: InputDecoration(
-                    labelText: 'Ngày hết hạn (MM/YY)',
+                    labelText: '${localeProvider.getText('expiry_date')} (MM/YY)',
                     labelStyle: TextStyle(color: themeProvider.subtitleColor),
                     border: const OutlineInputBorder(),
                   ),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return null;
                     if (!RegExp(r'^(0[1-9]|1[0-2])\/?([0-9]{2})$').hasMatch(v.trim())) {
-                      return 'Định dạng hạn thẻ không hợp lệ (ví dụ: 12/28)';
+                      return localeProvider.isVietnamese ? 'Định dạng hạn thẻ không hợp lệ (ví dụ: 12/28)' : 'Invalid expiry format (e.g. 12/28)';
                     }
                     return null;
                   },
@@ -137,7 +138,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                     FilteringTextInputFormatter.allow(RegExp(r'[\d+]')),
                   ],
                   decoration: InputDecoration(
-                    labelText: 'Số điện thoại liên kết (Vd: 0912345678)',
+                    labelText: localeProvider.isVietnamese ? 'Số điện thoại liên kết (Vd: 0912345678)' : 'Linked Phone Number (e.g. 0912345678)',
                     labelStyle: TextStyle(color: themeProvider.subtitleColor),
                     border: const OutlineInputBorder(),
                   ),
@@ -145,7 +146,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                     if (v == null || v.trim().isEmpty) return null;
                     final clean = v.trim();
                     if (!RegExp(r'^(\+84|0)[35789][0-9]{8}$').hasMatch(clean)) {
-                      return 'Số ĐT không hợp lệ (gồm 10 chữ số, ví dụ: 0912345678)';
+                      return localeProvider.getText('phone_invalid');
                     }
                     return null;
                   },
@@ -157,7 +158,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy', style: TextStyle(color: Colors.white54)),
+            child: Text(localeProvider.getText('cancel'), style: const TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -179,17 +180,17 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                   if (response.statusCode == 200 && mounted) {
                     HapticService.successFeedback();
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Cập nhật thông tin thẻ thành công!'), backgroundColor: Colors.green),
+                      SnackBar(content: Text(localeProvider.isVietnamese ? 'Cập nhật thông tin thẻ thành công!' : 'Card info updated successfully!'), backgroundColor: Colors.green),
                     );
                     _refreshCardDetails();
                   } else {
                     final resBody = json.decode(response.body);
-                    throw Exception(resBody['error'] ?? 'Cập nhật thất bại');
+                    throw Exception(resBody['error'] ?? 'Update failed');
                   }
                 } catch (e) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Lỗi: ${e.toString().replaceAll("Exception: ", "")}'), backgroundColor: Colors.red),
+                      SnackBar(content: Text('${localeProvider.getText('error_prefix')}: ${e.toString().replaceAll("Exception: ", "")}'), backgroundColor: Colors.red),
                     );
                   }
                 } finally {
@@ -198,7 +199,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent),
-            child: const Text('Lưu thông tin'),
+            child: Text(localeProvider.getText('save_changes')),
           ),
         ],
       ),
@@ -214,18 +215,18 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
 
   void _showTopUpDialog() {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
     if (CardUtils.isCardExpired(_card['expiryDate'])) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Thẻ này đã hết hạn sử dụng. Vui lòng bấm ✏️ ở góc trên để cập nhật hạn thẻ trước khi nạp tiền!'), backgroundColor: Colors.red),
+        SnackBar(content: Text(localeProvider.isVietnamese ? 'Thẻ này đã hết hạn sử dụng. Vui lòng bấm ✏️ ở góc trên để cập nhật hạn thẻ trước khi nạp tiền!' : 'This card is expired. Please tap ✏️ to update expiry date before top up!'), backgroundColor: Colors.red),
       );
       return;
     }
-    HapticService.selectionFeedback();
-    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
-    final amountController = TextEditingController(text: localeProvider.isVND ? '100000' : '50.00');
-    final formKey = GlobalKey<FormState>();
 
-    final accentCol = themeProvider.isDarkMode ? Colors.greenAccent : Colors.green;
+    HapticService.selectionFeedback();
+    final amountController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    final accentCol = Colors.greenAccent;
 
     showDialog(
       context: context,
@@ -236,7 +237,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
           children: [
             Icon(Icons.add_card, color: accentCol, size: 28),
             const SizedBox(width: 8),
-            Text('Nạp Tiền Vào Thẻ', style: TextStyle(color: themeProvider.textColor, fontWeight: FontWeight.bold, fontSize: 18)),
+            Text(localeProvider.isVietnamese ? 'Nạp Tiền Vào Thẻ' : 'Top Up Card Balance', style: TextStyle(color: themeProvider.textColor, fontWeight: FontWeight.bold, fontSize: 18)),
           ],
         ),
         content: Form(
@@ -245,7 +246,9 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Nạp tiền trực tiếp vào ${_card['cardName'] ?? 'Thẻ'}. Số dư hiện tại: ${localeProvider.formatAmount(_parseNum(_card['balance']))}',
+                localeProvider.isVietnamese
+                    ? 'Nạp tiền trực tiếp vào ${_card['cardName'] ?? 'Thẻ'}. Số dư hiện tại: ${localeProvider.formatAmount(_parseNum(_card['balance']))}'
+                    : 'Top up balance directly for ${_card['cardName'] ?? 'Card'}. Current balance: ${localeProvider.formatAmount(_parseNum(_card['balance']))}',
                 style: TextStyle(color: themeProvider.subtitleColor, fontSize: 13),
               ),
               const SizedBox(height: 16),
@@ -254,7 +257,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 style: TextStyle(color: accentCol, fontSize: 24, fontWeight: FontWeight.bold),
                 decoration: InputDecoration(
-                  labelText: 'Số tiền nạp (${localeProvider.currencySymbol})',
+                  labelText: localeProvider.isVietnamese ? 'Số tiền nạp (${localeProvider.currencySymbol})' : 'Top Up Amount (${localeProvider.currencySymbol})',
                   labelStyle: TextStyle(color: themeProvider.subtitleColor),
                   prefixText: '${localeProvider.currencySymbol} ',
                   prefixStyle: TextStyle(color: accentCol, fontSize: 24, fontWeight: FontWeight.bold),
@@ -262,7 +265,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                 ),
                 validator: (v) {
                   final amt = double.tryParse(v?.trim() ?? '');
-                  if (amt == null || amt <= 0) return 'Số tiền nạp phải lớn hơn 0';
+                  if (amt == null || amt <= 0) return localeProvider.isVietnamese ? 'Số tiền nạp phải lớn hơn 0' : 'Amount must be greater than 0';
                   return null;
                 },
               ),
@@ -272,7 +275,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy', style: TextStyle(color: Colors.white54)),
+            child: Text(localeProvider.getText('cancel'), style: const TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -287,8 +290,8 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                     headers: authProvider.authHeaders,
                     body: json.encode({
                       'cardId': _card['id'],
-                      'title': 'Nạp tiền vào ví',
-                      'category': 'Nạp tiền',
+                      'title': localeProvider.isVietnamese ? 'Nạp tiền vào ví' : 'Top up balance',
+                      'category': localeProvider.isVietnamese ? 'Nạp tiền' : 'Top up',
                       'amount': amt,
                       'isExpense': false,
                       'status': 'Success',
@@ -298,18 +301,18 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                     HapticService.successFeedback();
                     ScaffoldMessenger.of(context).hideCurrentSnackBar();
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Nạp tiền thành công +${localeProvider.formatAmount(amt)}!'), backgroundColor: Colors.green),
+                      SnackBar(content: Text(localeProvider.isVietnamese ? 'Nạp tiền thành công +${localeProvider.formatAmount(amt)}!' : 'Top up successful +${localeProvider.formatAmount(amt)}!'), backgroundColor: Colors.green),
                     );
                     _refreshCardDetails();
                   } else {
                     final resBody = json.decode(response.body);
-                    throw Exception(resBody['error'] ?? 'Nạp tiền thất bại');
+                    throw Exception(resBody['error'] ?? 'Top up failed');
                   }
                 } catch (e) {
                   if (mounted) {
                     HapticService.errorFeedback();
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Lỗi nạp tiền: ${e.toString().replaceAll("Exception: ", "")}'), backgroundColor: Colors.red),
+                      SnackBar(content: Text('${localeProvider.getText('error_prefix')}: ${e.toString().replaceAll("Exception: ", "")}'), backgroundColor: Colors.red),
                     );
                   }
                 } finally {
@@ -318,7 +321,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.greenAccent, foregroundColor: Colors.black),
-            child: const Text('Xác Nhận Nạp Tiền', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(localeProvider.isVietnamese ? 'Xác Nhận Nạp Tiền' : 'Confirm Top Up', style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
