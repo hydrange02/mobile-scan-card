@@ -70,9 +70,12 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
               children: [
                 TextFormField(
                   controller: nameController,
+                  keyboardType: TextInputType.text,
+                  enableSuggestions: true,
+                  autocorrect: true,
                   style: TextStyle(color: themeProvider.textColor),
                   decoration: InputDecoration(
-                    labelText: 'Tên thẻ (Vd: Visa Gold)',
+                    labelText: 'Tên thẻ (Vd: Visa Gold, Ví Tiêu Dùng)',
                     labelStyle: TextStyle(color: themeProvider.subtitleColor),
                     border: const OutlineInputBorder(),
                   ),
@@ -80,8 +83,8 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                     if (v == null || v.trim().isEmpty) return 'Vui lòng nhập tên thẻ';
                     final clean = v.trim();
                     if (clean.length < 2 || clean.length > 50) return 'Tên thẻ phải từ 2 đến 50 ký tự';
-                    if (RegExp(r'[<>{}[\]\\\/@#$%^&*()=~|]').hasMatch(clean)) {
-                      return 'Tên thẻ không được chứa các ký tự đặc biệt';
+                    if (RegExp(r'[<>{}]').hasMatch(clean)) {
+                      return 'Tên thẻ chứa ký tự không hợp lệ';
                     }
                     return null;
                   },
@@ -89,6 +92,9 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: holderController,
+                  keyboardType: TextInputType.name,
+                  enableSuggestions: true,
+                  autocorrect: true,
                   style: TextStyle(color: themeProvider.textColor),
                   decoration: InputDecoration(
                     labelText: 'Tên chủ sở hữu (Vd: Nguyễn Văn A hoặc NGUYEN VAN A)',
@@ -99,8 +105,8 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                     if (v == null || v.trim().isEmpty) return 'Vui lòng nhập tên chủ thẻ';
                     final clean = v.trim();
                     if (clean.length < 2 || clean.length > 50) return 'Tên chủ thẻ phải từ 2 đến 50 ký tự';
-                    if (RegExp(r'[<>{}[\]\\\/@#$%^&*()=~|0-9]').hasMatch(clean)) {
-                      return 'Tên chủ thẻ chỉ được gồm chữ cái và khoảng trắng';
+                    if (RegExp(r'[<>{}]').hasMatch(clean)) {
+                      return 'Tên chủ thẻ chứa ký tự không hợp lệ';
                     }
                     return null;
                   },

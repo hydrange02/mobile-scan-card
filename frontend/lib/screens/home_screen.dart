@@ -359,7 +359,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: Center(
               child: Text(
-                'Chưa có lịch sử giao dịch nào',
+                localeProvider.getText('no_transactions'),
                 style: TextStyle(color: themeProvider.subtitleColor, fontSize: 13),
               ),
             ),

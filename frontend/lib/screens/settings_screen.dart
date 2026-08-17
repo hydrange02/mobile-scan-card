@@ -35,22 +35,85 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (_) {}
   }
 
+  String _formatDobForDisplay(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return '';
+    final s = raw.trim();
+    if (RegExp(r'^\d{1,2}\/\d{1,2}\/\d{4}$').hasMatch(s)) {
+      final parts = s.split('/');
+      final d = parts[0].padLeft(2, '0');
+      final m = parts[1].padLeft(2, '0');
+      return '$d/$m/${parts[2]}';
+    }
+    if (RegExp(r'^\d{4}-\d{1,2}-\d{1,2}').hasMatch(s)) {
+      final datePart = s.split('T')[0];
+      final parts = datePart.split('-');
+      if (parts.length == 3) {
+        final y = parts[0];
+        final m = parts[1].padLeft(2, '0');
+        final d = parts[2].padLeft(2, '0');
+        return '$d/$m/$y';
+      }
+    }
+    if (RegExp(r'^\d{1,2}-\d{1,2}-\d{4}$').hasMatch(s)) {
+      final parts = s.split('-');
+      final d = parts[0].padLeft(2, '0');
+      final m = parts[1].padLeft(2, '0');
+      return '$d/$m/${parts[2]}';
+    }
+    return s;
+  }
+
+  bool _isValidDob(String? input) {
+    if (input == null || input.trim().isEmpty) return true;
+    final s = input.trim();
+    if (RegExp(r'^\d{1,2}\/\d{1,2}\/\d{4}$').hasMatch(s)) {
+      final parts = s.split('/');
+      final day = int.tryParse(parts[0]) ?? 0;
+      final month = int.tryParse(parts[1]) ?? 0;
+      final year = int.tryParse(parts[2]) ?? 0;
+      if (month >= 1 && month <= 12 && day >= 1 && day <= 31 && year >= 1900 && year <= DateTime.now().year) {
+        return true;
+      }
+    }
+    if (RegExp(r'^\d{4}-\d{1,2}-\d{1,2}').hasMatch(s)) {
+      final datePart = s.split('T')[0];
+      final parts = datePart.split('-');
+      final year = int.tryParse(parts[0]) ?? 0;
+      final month = int.tryParse(parts[1]) ?? 0;
+      final day = int.tryParse(parts[2]) ?? 0;
+      if (month >= 1 && month <= 12 && day >= 1 && day <= 31 && year >= 1900 && year <= DateTime.now().year) {
+        return true;
+      }
+    }
+    if (RegExp(r'^\d{1,2}-\d{1,2}-\d{4}$').hasMatch(s)) {
+      final parts = s.split('-');
+      final day = int.tryParse(parts[0]) ?? 0;
+      final month = int.tryParse(parts[1]) ?? 0;
+      final year = int.tryParse(parts[2]) ?? 0;
+      if (month >= 1 && month <= 12 && day >= 1 && day <= 31 && year >= 1900 && year <= DateTime.now().year) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   void _showEditProfileDialog() {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final user = authProvider.user;
 
     final nameController = TextEditingController(text: (user?['fullName'] ?? '').toString());
     final phoneController = TextEditingController(text: (user?['phone'] ?? '').toString());
     final addressController = TextEditingController(text: (user?['address'] ?? '').toString());
-    final dobController = TextEditingController(text: (user?['dob'] ?? '').toString());
+    final dobController = TextEditingController(text: _formatDobForDisplay((user?['dob'] ?? '').toString()));
     final formKey = GlobalKey<FormState>();
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: themeProvider.dialogBgColor,
-        title: Text('Cập Nhật Thông Tin Cá Nhân', style: TextStyle(color: themeProvider.textColor)),
+        title: Text(localeProvider.getText('update_profile_title'), style: TextStyle(color: themeProvider.textColor)),
         content: Form(
           key: formKey,
           child: SingleChildScrollView(
@@ -61,14 +124,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   controller: nameController,
                   style: TextStyle(color: themeProvider.textColor),
                   decoration: InputDecoration(
-                    labelText: 'Họ và tên đầy đủ',
+                    labelText: localeProvider.getText('full_name_label'),
                     labelStyle: TextStyle(color: themeProvider.subtitleColor),
                     border: const OutlineInputBorder(),
                   ),
                   validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Vui lòng nhập họ và tên';
+                    if (v == null || v.trim().isEmpty) return localeProvider.getText('required');
                     final clean = v.trim();
-                    if (clean.length < 2 || clean.length > 50) return 'Họ và tên phải từ 2 đến 50 ký tự';
+                    if (clean.length < 2 || clean.length > 50) return localeProvider.getText('full_name_label');
                     return null;
                   },
                 ),
@@ -81,7 +144,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     FilteringTextInputFormatter.allow(RegExp(r'[\d+]')),
                   ],
                   decoration: InputDecoration(
-                    labelText: 'Số điện thoại (10 chữ số)',
+                    labelText: localeProvider.getText('phone_label'),
                     labelStyle: TextStyle(color: themeProvider.subtitleColor),
                     border: const OutlineInputBorder(),
                   ),
@@ -89,7 +152,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     if (v == null || v.trim().isEmpty) return null;
                     final clean = v.trim();
                     if (!RegExp(r'^(\+84|0)[35789][0-9]{8}$').hasMatch(clean)) {
-                      return 'Số điện thoại không hợp lệ (ví dụ: 0912345678)';
+                      return localeProvider.getText('phone_invalid');
                     }
                     return null;
                   },
@@ -99,7 +162,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   controller: addressController,
                   style: TextStyle(color: themeProvider.textColor),
                   decoration: InputDecoration(
-                    labelText: 'Địa chỉ nhà / Cơ quan',
+                    labelText: localeProvider.getText('address_label'),
                     labelStyle: TextStyle(color: themeProvider.subtitleColor),
                     border: const OutlineInputBorder(),
                   ),
@@ -110,16 +173,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   readOnly: true,
                   style: TextStyle(color: themeProvider.textColor),
                   decoration: InputDecoration(
-                    labelText: 'Ngày sinh (DD/MM/YYYY)',
+                    labelText: localeProvider.getText('dob_label'),
                     labelStyle: TextStyle(color: themeProvider.subtitleColor),
                     border: const OutlineInputBorder(),
                     suffixIcon: const Icon(Icons.calendar_today, color: Colors.cyanAccent),
                   ),
                   onTap: () async {
                     final now = DateTime.now();
+                    DateTime initialPickerDate = DateTime(2000, 1, 1);
+                    if (dobController.text.isNotEmpty && _isValidDob(dobController.text)) {
+                      final parts = dobController.text.split('/');
+                      if (parts.length == 3) {
+                        final d = int.tryParse(parts[0]);
+                        final m = int.tryParse(parts[1]);
+                        final y = int.tryParse(parts[2]);
+                        if (d != null && m != null && y != null) {
+                          initialPickerDate = DateTime(y, m, d);
+                        }
+                      }
+                    }
                     final picked = await showDatePicker(
                       context: context,
-                      initialDate: DateTime(2000, 1, 1),
+                      initialDate: initialPickerDate,
                       firstDate: DateTime(1920),
                       lastDate: now,
                     );
@@ -132,8 +207,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return null;
-                    if (!RegExp(r'^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$').hasMatch(v.trim())) {
-                      return 'Ngày sinh không hợp lệ (định dạng DD/MM/YYYY)';
+                    if (!_isValidDob(v.trim())) {
+                      return localeProvider.getText('dob_invalid');
                     }
                     return null;
                   },
@@ -145,7 +220,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+            child: Text(localeProvider.getText('cancel'), style: const TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -167,7 +242,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     HapticService.successFeedback();
                     messenger.hideCurrentSnackBar();
                     messenger.showSnackBar(
-                      const SnackBar(content: Text('Cập nhật thông tin người dùng thành công!'), backgroundColor: Colors.green),
+                      SnackBar(content: Text(localeProvider.getText('update_profile_success')), backgroundColor: Colors.green),
                     );
                     await authProvider.fetchUserProfile();
                   } else {
@@ -189,7 +264,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black),
-            child: const Text('Lưu Thay Đổi', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(localeProvider.getText('save_changes'), style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
