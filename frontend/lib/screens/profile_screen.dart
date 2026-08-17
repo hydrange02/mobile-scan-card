@@ -570,7 +570,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Text(
                           (authProvider.user?['fullName']?.toString().isNotEmpty == true)
                               ? authProvider.user!['fullName'].toString()
-                              : (authProvider.user?['username'] ?? 'Người Dùng NFC'),
+                              : (authProvider.user?['username'] ?? localeProvider.getText('user_default_name')),
                           style: TextStyle(color: themeProvider.textColor, fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 4),
@@ -581,7 +581,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         if (authProvider.user?['phone']?.toString().isNotEmpty == true) ...[
                           const SizedBox(height: 2),
                           Text(
-                            'SĐT: ${authProvider.user!['phone']}',
+                            '${localeProvider.isVietnamese ? "SĐT" : "Tel"}: ${authProvider.user!['phone']}',
                             style: TextStyle(color: themeProvider.accentColor, fontSize: 12, fontWeight: FontWeight.bold),
                           ),
                         ],
@@ -590,7 +590,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   IconButton(
                     icon: Icon(Icons.edit_note_rounded, color: themeProvider.accentColor, size: 28),
-                    tooltip: 'Cập nhật thông tin cá nhân',
+                    tooltip: localeProvider.getText('edit_profile_tooltip'),
                     onPressed: () => _showEditProfileDialog(authProvider),
                   ),
                 ],

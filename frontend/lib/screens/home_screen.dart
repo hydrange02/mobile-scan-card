@@ -141,12 +141,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 Icon(Icons.credit_card_off_rounded, size: 48, color: themeProvider.primaryColor),
                 const SizedBox(height: 12),
                 Text(
-                  'Chưa có thẻ nào trong ví',
+                  localeProvider.getText('no_cards_in_wallet'),
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: themeProvider.textColor),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Hãy thêm thẻ ngay để xem chi tiết số dư và quản lý các giao dịch của bạn!',
+                  localeProvider.getText('add_card_now_sub'),
                   textAlign: TextAlign.center,
                   style: TextStyle(color: themeProvider.subtitleColor, fontSize: 13),
                 ),
@@ -157,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     setState(() => _currentIndex = 1); // Switch to Wallet tab
                   },
                   icon: const Icon(Icons.add_card),
-                  label: const Text('Thêm thẻ ngay'),
+                  label: Text(localeProvider.getText('add_card_now')),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: themeProvider.primaryColor,
                     foregroundColor: Colors.white,
@@ -233,9 +233,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                     borderRadius: BorderRadius.circular(20),
                                     border: Border.all(color: Colors.redAccent, width: 1),
                                   ),
-                                  child: const Text(
-                                    'ĐÃ HẾT HẠN',
-                                    style: TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                                  child: Text(
+                                    localeProvider.getText('expired'),
+                                    style: const TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.bold),
                                   ),
                                 ),
                               ],

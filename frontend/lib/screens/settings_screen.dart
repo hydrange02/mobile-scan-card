@@ -273,6 +273,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _showChangePasswordDialog() {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
     HapticService.selectionFeedback();
     final currentPassController = TextEditingController();
     final newPassController = TextEditingController();
@@ -282,7 +283,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: themeProvider.dialogBgColor,
-        title: Text('Đổi Mật Khẩu Đăng Nhập', style: TextStyle(color: themeProvider.textColor)),
+        title: Text(localeProvider.getText('change_login_pass'), style: TextStyle(color: themeProvider.textColor)),
         content: Form(
           key: formKey,
           child: Column(
@@ -295,11 +296,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 autocorrect: false,
                 enableSuggestions: false,
                 decoration: InputDecoration(
-                  labelText: 'Mật khẩu hiện tại',
+                  labelText: localeProvider.getText('current_password'),
                   labelStyle: TextStyle(color: themeProvider.subtitleColor),
                   border: const OutlineInputBorder(),
                 ),
-                validator: (v) => (v?.trim().isEmpty ?? true) ? 'Vui lòng nhập mật khẩu hiện tại' : null,
+                validator: (v) => (v?.trim().isEmpty ?? true) ? localeProvider.getText('current_pass_required') : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -309,11 +310,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 autocorrect: false,
                 enableSuggestions: false,
                 decoration: InputDecoration(
-                  labelText: 'Mật khẩu mới (tối thiểu 6 ký tự)',
+                  labelText: localeProvider.getText('new_password'),
                   labelStyle: TextStyle(color: themeProvider.subtitleColor),
                   border: const OutlineInputBorder(),
                 ),
-                validator: (v) => (v?.trim().length ?? 0) < 6 ? 'Mật khẩu tối thiểu 6 ký tự (không tính khoảng trắng)' : null,
+                validator: (v) => (v?.trim().length ?? 0) < 6 ? localeProvider.getText('new_pass_min_length') : null,
               ),
             ],
           ),
@@ -323,7 +324,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () {
               if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
             },
-            child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+            child: Text(localeProvider.getText('cancel'), style: const TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -335,7 +336,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (currentPassController.text.trim() == newPassController.text.trim()) {
                   messenger.hideCurrentSnackBar();
                   messenger.showSnackBar(
-                    const SnackBar(content: Text('Mật khẩu mới không được trùng với mật khẩu hiện tại!'), backgroundColor: Colors.orangeAccent),
+                    SnackBar(content: Text(localeProvider.isVietnamese ? 'Mật khẩu mới không được trùng với mật khẩu hiện tại!' : 'New password cannot match current password!'), backgroundColor: Colors.orangeAccent),
                   );
                   return;
                 }
@@ -355,26 +356,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     WidgetsBinding.instance.addPostFrameCallback((_) {
                       messenger.hideCurrentSnackBar();
                       messenger.showSnackBar(
-                        const SnackBar(content: Text('Đổi mật khẩu thành công!'), backgroundColor: Colors.green),
+                        SnackBar(content: Text(localeProvider.getText('pass_updated_success')), backgroundColor: Colors.green),
                       );
                     });
                   } else {
                     final resData = jsonDecode(response.body);
                     messenger.hideCurrentSnackBar();
                     messenger.showSnackBar(
-                      SnackBar(content: Text(resData['error'] ?? 'Đổi mật khẩu thất bại'), backgroundColor: Colors.redAccent),
+                      SnackBar(content: Text(resData['error'] ?? 'Failed'), backgroundColor: Colors.redAccent),
                     );
                   }
                 } catch (e) {
                   messenger.hideCurrentSnackBar();
                   messenger.showSnackBar(
-                    SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.redAccent),
+                    SnackBar(content: Text('${localeProvider.getText('error_prefix')}: $e'), backgroundColor: Colors.redAccent),
                   );
                 }
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent),
-            child: const Text('Đổi mật khẩu', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: Text(localeProvider.getText('update_password'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -383,6 +384,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _showChangePinDialog() {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
     HapticService.selectionFeedback();
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final user = authProvider.user;
@@ -396,7 +398,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: themeProvider.dialogBgColor,
-        title: Text(hasPin ? 'Đổi Mã PIN Bảo Mật' : 'Tạo Mã PIN Bảo Mật', style: TextStyle(color: themeProvider.textColor)),
+        title: Text(hasPin ? localeProvider.getText('change_pin') : localeProvider.getText('create_pin'), style: TextStyle(color: themeProvider.textColor)),
         content: Form(
           key: formKey,
           child: Column(
@@ -413,7 +415,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     FilteringTextInputFormatter.digitsOnly,
                   ],
                   decoration: InputDecoration(
-                    labelText: 'Mã PIN hiện tại (6 chữ số)',
+                    labelText: localeProvider.getText('current_pin'),
                     labelStyle: TextStyle(color: themeProvider.subtitleColor),
                     border: const OutlineInputBorder(),
                     suffixIcon: TextButton(
@@ -421,10 +423,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Navigator.pop(ctx);
                         _showForgotPinDialog();
                       },
-                      child: const Text('Quên?', style: TextStyle(color: Colors.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+                      child: Text(localeProvider.isVietnamese ? 'Quên?' : 'Forgot?', style: const TextStyle(color: Colors.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold)),
                     ),
                   ),
-                  validator: (v) => (v?.length ?? 0) != 6 || !RegExp(r'^\d+$').hasMatch(v ?? '') ? 'Mã PIN hiện tại phải gồm đúng 6 chữ số' : null,
+                  validator: (v) => (v?.length ?? 0) != 6 || !RegExp(r'^\d+$').hasMatch(v ?? '') ? localeProvider.getText('pin_required') : null,
                 ),
                 const SizedBox(height: 12),
               ],
@@ -438,11 +440,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   FilteringTextInputFormatter.digitsOnly,
                 ],
                 decoration: InputDecoration(
-                  labelText: hasPin ? 'Mã PIN mới (bắt buộc 6 chữ số)' : 'Mã PIN 6 chữ số',
+                  labelText: localeProvider.getText('new_pin'),
                   labelStyle: TextStyle(color: themeProvider.subtitleColor),
                   border: const OutlineInputBorder(),
                 ),
-                validator: (v) => (v?.length ?? 0) != 6 || !RegExp(r'^\d+$').hasMatch(v ?? '') ? 'Mã PIN mới phải gồm đúng 6 chữ số' : null,
+                validator: (v) => (v?.length ?? 0) != 6 || !RegExp(r'^\d+$').hasMatch(v ?? '') ? localeProvider.getText('pin_required') : null,
               ),
             ],
           ),
@@ -452,7 +454,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () {
               if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
             },
-            child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+            child: Text(localeProvider.getText('cancel'), style: const TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -463,7 +465,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (hasPin && currentPinController.text.trim() == newPinController.text.trim()) {
                   messenger.hideCurrentSnackBar();
                   messenger.showSnackBar(
-                    const SnackBar(content: Text('Mã PIN mới không được trùng với Mã PIN hiện tại!'), backgroundColor: Colors.orangeAccent),
+                    SnackBar(content: Text(localeProvider.isVietnamese ? 'Mã PIN mới không được trùng với PIN hiện tại!' : 'New PIN cannot match current PIN!'), backgroundColor: Colors.orangeAccent),
                   );
                   return;
                 }
@@ -484,7 +486,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       messenger.hideCurrentSnackBar();
                       messenger.showSnackBar(
                         SnackBar(
-                          content: Text(hasPin ? 'Đổi Mã PIN thành công!' : 'Tạo Mã PIN thành công!'),
+                          content: Text(localeProvider.getText('pin_updated_success')),
                           backgroundColor: Colors.green,
                         ),
                       );
@@ -494,19 +496,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     final resData = jsonDecode(response.body);
                     messenger.hideCurrentSnackBar();
                     messenger.showSnackBar(
-                      SnackBar(content: Text(resData['error'] ?? 'Thao tác thất bại'), backgroundColor: Colors.redAccent),
+                      SnackBar(content: Text(resData['error'] ?? 'Failed'), backgroundColor: Colors.redAccent),
                     );
                   }
                 } catch (e) {
                   messenger.hideCurrentSnackBar();
                   messenger.showSnackBar(
-                    SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.redAccent),
+                    SnackBar(content: Text('${localeProvider.getText('error_prefix')}: $e'), backgroundColor: Colors.redAccent),
                   );
                 }
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
-            child: Text(hasPin ? 'Đổi Mã PIN' : 'Tạo Mã PIN', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: Text(hasPin ? localeProvider.getText('update_pin') : localeProvider.getText('create_pin'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -515,6 +517,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _showForgotPinDialog() {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
     HapticService.selectionFeedback();
     final passwordController = TextEditingController();
     final newPinController = TextEditingController();
@@ -524,24 +527,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: themeProvider.dialogBgColor,
-        title: Text('Đặt lại Mã PIN (Quên PIN)', style: TextStyle(color: themeProvider.textColor)),
+        title: Text(localeProvider.getText('forgot_pin'), style: TextStyle(color: themeProvider.textColor)),
         content: Form(
           key: formKey,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Nhập mật khẩu tài khoản để xác thực:', style: TextStyle(color: themeProvider.subtitleColor, fontSize: 13)),
+              Text(localeProvider.getText('enter_password_to_reset_pin'), style: TextStyle(color: themeProvider.subtitleColor, fontSize: 13)),
               const SizedBox(height: 12),
               TextFormField(
                 controller: passwordController,
                 style: TextStyle(color: themeProvider.textColor),
                 obscureText: true,
                 decoration: InputDecoration(
-                  labelText: 'Mật khẩu tài khoản',
+                  labelText: localeProvider.getText('account_password'),
                   labelStyle: TextStyle(color: themeProvider.subtitleColor),
                   border: const OutlineInputBorder(),
                 ),
-                validator: (v) => (v?.trim().isEmpty ?? true) ? 'Vui lòng nhập mật khẩu' : null,
+                validator: (v) => (v?.trim().isEmpty ?? true) ? localeProvider.getText('current_pass_required') : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -554,11 +557,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   FilteringTextInputFormatter.digitsOnly,
                 ],
                 decoration: InputDecoration(
-                  labelText: 'Mã PIN mới (bắt buộc 6 chữ số)',
+                  labelText: localeProvider.getText('new_pin'),
                   labelStyle: TextStyle(color: themeProvider.subtitleColor),
                   border: const OutlineInputBorder(),
                 ),
-                validator: (v) => (v?.length ?? 0) != 6 || !RegExp(r'^\d+$').hasMatch(v ?? '') ? 'Mã PIN phải gồm đúng 6 chữ số' : null,
+                validator: (v) => (v?.length ?? 0) != 6 || !RegExp(r'^\d+$').hasMatch(v ?? '') ? localeProvider.getText('pin_required') : null,
               ),
             ],
           ),
@@ -568,7 +571,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () {
               if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
             },
-            child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+            child: Text(localeProvider.getText('cancel'), style: const TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -591,7 +594,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     WidgetsBinding.instance.addPostFrameCallback((_) {
                       messenger.hideCurrentSnackBar();
                       messenger.showSnackBar(
-                        const SnackBar(content: Text('Đặt lại Mã PIN thành công!'), backgroundColor: Colors.green),
+                        SnackBar(content: Text(localeProvider.getText('pin_reset_success')), backgroundColor: Colors.green),
                       );
                     });
                     await authProvider.fetchUserProfile();
@@ -599,19 +602,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     final resData = jsonDecode(response.body);
                     messenger.hideCurrentSnackBar();
                     messenger.showSnackBar(
-                      SnackBar(content: Text(resData['error'] ?? 'Đặt lại PIN thất bại'), backgroundColor: Colors.redAccent),
+                      SnackBar(content: Text(resData['error'] ?? 'Reset PIN failed'), backgroundColor: Colors.redAccent),
                     );
                   }
                 } catch (e) {
                   messenger.hideCurrentSnackBar();
                   messenger.showSnackBar(
-                    SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.redAccent),
+                    SnackBar(content: Text('${localeProvider.getText('error_prefix')}: $e'), backgroundColor: Colors.redAccent),
                   );
                 }
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent),
-            child: const Text('Xác nhận đặt lại PIN', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            child: Text(localeProvider.getText('reset_pin'), style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -793,7 +796,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: const Icon(Icons.lock, color: Colors.white, size: 18),
                     ),
                     title: Text(localeProvider.getText('update_password'), style: TextStyle(color: themeProvider.textColor, fontWeight: FontWeight.bold)),
-                    subtitle: Text('Đổi mật khẩu tài khoản đăng nhập', style: TextStyle(color: themeProvider.subtitleColor, fontSize: 12)),
+                    subtitle: Text(localeProvider.getText('update_pass_sub'), style: TextStyle(color: themeProvider.subtitleColor, fontSize: 12)),
                     trailing: Icon(Icons.chevron_right, color: themeProvider.subtitleColor),
                     onTap: _showChangePasswordDialog,
                   ),
@@ -807,13 +810,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: Text(
                       (user?['hasPin'] == true || (user?['hasPin'] != false && user?['pin'] != null))
                           ? localeProvider.getText('change_pin')
-                          : 'Tạo Mã PIN Bảo Mật',
+                          : localeProvider.getText('create_pin'),
                       style: TextStyle(color: themeProvider.textColor, fontWeight: FontWeight.bold),
                     ),
                     subtitle: Text(
                       (user?['hasPin'] == true || (user?['hasPin'] != false && user?['pin'] != null))
-                          ? 'Đổi Mã PIN bảo mật 6 chữ số'
-                          : 'Tạo mới Mã PIN 6 chữ số cho tài khoản',
+                          ? localeProvider.getText('change_pin_sub')
+                          : localeProvider.getText('create_pin_sub'),
                       style: TextStyle(color: themeProvider.subtitleColor, fontSize: 12),
                     ),
                     trailing: Icon(Icons.chevron_right, color: themeProvider.subtitleColor),
@@ -827,7 +830,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: const Icon(Icons.help_center, color: Colors.white, size: 18),
                     ),
                     title: Text(localeProvider.getText('forgot_pin'), style: TextStyle(color: themeProvider.textColor, fontWeight: FontWeight.bold)),
-                    subtitle: Text('Xác thực qua mật khẩu để tạo PIN mới', style: TextStyle(color: themeProvider.subtitleColor, fontSize: 12)),
+                    subtitle: Text(localeProvider.getText('forgot_pin_sub'), style: TextStyle(color: themeProvider.subtitleColor, fontSize: 12)),
                     trailing: Icon(Icons.chevron_right, color: themeProvider.subtitleColor),
                     onTap: _showForgotPinDialog,
                   ),
@@ -841,7 +844,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             // 3. APP SETTINGS & PREFERENCES
             // -------------------------------------------------------------
             Text(
-              'Cấu Hình Ứng Dụng',
+              localeProvider.getText('app_config'),
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: themeProvider.textColor),
             ),
             const SizedBox(height: 10),
@@ -913,14 +916,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: Text(localeProvider.getText('auto_lock'), style: TextStyle(color: themeProvider.textColor)),
                     subtitle: Text(
                       autoLockService.autoLockSeconds == 0
-                          ? 'Tắt'
+                          ? (localeProvider.isVietnamese ? 'Tắt' : 'Disabled')
                           : autoLockService.autoLockSeconds == 60
-                              ? '1 phút'
+                              ? (localeProvider.isVietnamese ? '1 phút' : '1 minute')
                               : autoLockService.autoLockSeconds == 300
-                                  ? '5 phút (Mặc định)'
+                                  ? (localeProvider.isVietnamese ? '5 phút (Mặc định)' : '5 minutes (Default)')
                                   : autoLockService.autoLockSeconds == 600
-                                      ? '10 phút'
-                                      : '${autoLockService.autoLockSeconds} giây',
+                                      ? (localeProvider.isVietnamese ? '10 phút' : '10 minutes')
+                                      : '${autoLockService.autoLockSeconds} s',
                       style: TextStyle(color: themeProvider.subtitleColor, fontSize: 12),
                     ),
                     trailing: DropdownButton<int>(
@@ -930,10 +933,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       dropdownColor: themeProvider.dialogBgColor,
                       style: TextStyle(color: themeProvider.textColor),
                       items: [
-                        DropdownMenuItem(value: 0, child: Text('Tắt', style: TextStyle(color: themeProvider.textColor))),
-                        DropdownMenuItem(value: 60, child: Text('1 phút', style: TextStyle(color: themeProvider.textColor))),
-                        DropdownMenuItem(value: 300, child: Text('5 phút', style: TextStyle(color: themeProvider.textColor))),
-                        DropdownMenuItem(value: 600, child: Text('10 phút', style: TextStyle(color: themeProvider.textColor))),
+                        DropdownMenuItem(value: 0, child: Text(localeProvider.isVietnamese ? 'Tắt' : 'Disabled', style: TextStyle(color: themeProvider.textColor))),
+                        DropdownMenuItem(value: 60, child: Text(localeProvider.isVietnamese ? '1 phút' : '1 min', style: TextStyle(color: themeProvider.textColor))),
+                        DropdownMenuItem(value: 300, child: Text(localeProvider.isVietnamese ? '5 phút' : '5 mins', style: TextStyle(color: themeProvider.textColor))),
+                        DropdownMenuItem(value: 600, child: Text(localeProvider.isVietnamese ? '10 phút' : '10 mins', style: TextStyle(color: themeProvider.textColor))),
                       ],
                       onChanged: (val) {
                         if (val != null) {

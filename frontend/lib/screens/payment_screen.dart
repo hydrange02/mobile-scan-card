@@ -735,9 +735,9 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                       onSuccess: _simulateNfcScanAndPay,
                     ),
             icon: const Icon(Icons.nfc, size: 28),
-            label: const FittedBox(
+            label: FittedBox(
               fit: BoxFit.scaleDown,
-              child: Text('CHẠM THẺ NFC ĐỂ THANH TOÁN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              child: Text(localeProvider.getText('tap_nfc_btn'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: btnBg,
@@ -753,6 +753,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
 
   void _showQrScannerModal() {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -863,7 +864,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                       );
                     },
                     icon: const Icon(Icons.verified_user_rounded),
-                    label: const Text('XÁC THỰC PIN & THANH TOÁN (MÁY ẢO / MÁY THẬT)'),
+                    label: Text(localeProvider.isVietnamese ? 'XÁC THỰC PIN & THANH TOÁN' : 'AUTHENTICATE PIN & PAY'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: themeProvider.accentColor,
                       foregroundColor: themeProvider.isDarkMode ? Colors.black : Colors.white,
@@ -900,12 +901,12 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
           child: Column(
             children: [
               Text(
-                'MÃ QR THANH TOÁN',
+                localeProvider.getText('qr_code_title'),
                 style: TextStyle(color: themeProvider.textColor, fontWeight: FontWeight.bold, fontSize: 16),
               ),
               const SizedBox(height: 6),
               Text(
-                'Quét mã này bằng ví điện tử để chuyển tiền đến ví',
+                localeProvider.getText('qr_code_sub'),
                 style: TextStyle(color: themeProvider.subtitleColor, fontSize: 12),
               ),
               const SizedBox(height: 20),
@@ -948,7 +949,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
           child: ElevatedButton.icon(
             onPressed: _showQrScannerModal,
             icon: const Icon(Icons.qr_code_scanner),
-            label: const Text('QUÉT MÃ QR KHÁCH HÀNG / CỬA HÀNG'),
+            label: Text(localeProvider.isVietnamese ? 'QUÉT MÃ QR KHÁCH HÀNG / CỬA HÀNG' : 'SCAN CUSTOMER / MERCHANT QR CODE'),
             style: ElevatedButton.styleFrom(
               backgroundColor: themeProvider.primaryColor,
               foregroundColor: Colors.white,

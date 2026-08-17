@@ -89,7 +89,7 @@ class _LockOverlayScreenState extends State<LockOverlayScreen> {
   final _pinController = TextEditingController();
   final _passwordController = TextEditingController();
   final _newPinController = TextEditingController();
-  final _forgotFormKey = GlobalKey<FormState>();
+  GlobalKey<FormState> _forgotFormKey = GlobalKey<FormState>();
 
   bool _isVerifying = false;
   String? _errorMessage;
@@ -322,6 +322,8 @@ class _LockOverlayScreenState extends State<LockOverlayScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final localeProvider = Provider.of<LocaleProvider>(context);
+
     return Stack(
       children: [
         Scaffold(
@@ -342,15 +344,15 @@ class _LockOverlayScreenState extends State<LockOverlayScreen> {
                       child: const Icon(Icons.lock_rounded, size: 64, color: Colors.purpleAccent),
                     ),
                     const SizedBox(height: 24),
-                    const Text(
-                      'Ứng dụng đã bị khóa',
-                      style: TextStyle(fontSize: 22, color: Colors.white, fontWeight: FontWeight.bold),
+                    Text(
+                      localeProvider.getText('app_locked_title'),
+                      style: const TextStyle(fontSize: 22, color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Nhập Mã PIN 6 chữ số của bạn để mở khóa',
+                    Text(
+                      localeProvider.getText('enter_pin_to_unlock'),
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                      style: const TextStyle(color: Colors.white70, fontSize: 14),
                     ),
                     const SizedBox(height: 28),
 
@@ -426,7 +428,7 @@ class _LockOverlayScreenState extends State<LockOverlayScreen> {
                         ),
                         child: _isVerifying
                             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                            : const Text('Mở khóa', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                            : Text(localeProvider.getText('unlock_button'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
                       ),
                     ),
 
@@ -438,18 +440,19 @@ class _LockOverlayScreenState extends State<LockOverlayScreen> {
                         TextButton.icon(
                           onPressed: () {
                             setState(() {
+                              _forgotFormKey = GlobalKey<FormState>();
                               _showForgotPinOverlay = true;
                               _forgotDialogError = null;
                             });
                           },
                           icon: const Icon(Icons.key_outlined, size: 18, color: Colors.cyanAccent),
-                          label: const Text('Quên Mã PIN?', style: TextStyle(color: Colors.cyanAccent)),
+                          label: Text(localeProvider.getText('forgot_pin'), style: const TextStyle(color: Colors.cyanAccent)),
                         ),
                         const SizedBox(width: 16),
                         TextButton.icon(
                           onPressed: _handleLogout,
                           icon: const Icon(Icons.logout, size: 18, color: Colors.redAccent),
-                          label: const Text('Đăng xuất', style: TextStyle(color: Colors.redAccent)),
+                          label: Text(localeProvider.getText('logout'), style: const TextStyle(color: Colors.redAccent)),
                         ),
                       ],
                     ),
