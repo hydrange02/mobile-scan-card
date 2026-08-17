@@ -20,6 +20,7 @@ router.get('/', async (req, res) => {
       title: tx.title,
       category: tx.category,
       date: tx.createdAt.toISOString(),
+      createdAt: tx.createdAt.toISOString(),
       cardName: tx.card ? tx.card.cardName : 'NFC Direct',
       cardType: tx.card 
         ? (tx.card.cardName.toLowerCase().includes('visa') ? 'Visa' : tx.card.cardName.toLowerCase().includes('mastercard') ? 'Mastercard' : 'NFC')

@@ -147,9 +147,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
             children: [
               TextField(
                 controller: _usernameController,
+                keyboardType: TextInputType.name,
+                enableSuggestions: true,
+                autocorrect: true,
                 style: TextStyle(color: themeProvider.textColor),
                 decoration: InputDecoration(
-                  labelText: 'Tên người dùng',
+                  labelText: 'Tên người dùng (Ví dụ: Nguyễn Văn A)',
                   labelStyle: TextStyle(color: themeProvider.subtitleColor),
                 ),
               ),

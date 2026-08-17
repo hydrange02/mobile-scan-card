@@ -78,17 +78,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
           children: [
             const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
             const SizedBox(width: 8),
-            Text('Xác Nhận Xóa Lịch Sử', style: TextStyle(color: themeProvider.textColor, fontWeight: FontWeight.bold)),
+            Text(localeProvider.getText('confirm_clear_title'), style: TextStyle(color: themeProvider.textColor, fontWeight: FontWeight.bold)),
           ],
         ),
         content: Text(
-          'Bạn có chắc chắn muốn xóa toàn bộ lịch sử giao dịch? Dữ liệu nhật ký giao dịch sẽ bị xóa và không thể khôi phục.',
+          localeProvider.getText('confirm_clear_msg'),
           style: TextStyle(color: themeProvider.subtitleColor, fontSize: 13),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+            child: Text(localeProvider.getText('cancel'), style: const TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -109,22 +109,25 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
       if (response.statusCode == 200 && mounted) {
         HapticService.successFeedback();
+        setState(() {
+          _allTransactions = [];
+        });
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã xóa toàn bộ lịch sử giao dịch!'), backgroundColor: Colors.green),
+          SnackBar(content: Text(localeProvider.getText('history_cleared')), backgroundColor: Colors.green),
         );
         _fetchTransactions();
       } else if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể xóa lịch sử giao dịch'), backgroundColor: Colors.redAccent),
+          SnackBar(content: Text(localeProvider.getText('clear_history_failed')), backgroundColor: Colors.redAccent),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(content: Text('${localeProvider.getText('error_prefix')}: $e'), backgroundColor: Colors.redAccent),
         );
       }
     }
@@ -224,7 +227,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Chi Tiết Giao Dịch',
+                  localeProvider.getText('transaction_detail'),
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: themeProvider.textColor),
                 ),
                 Container(
@@ -236,7 +239,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    status == 'Success' ? 'Thành công' : 'Thất bại',
+                    status == 'Success' ? localeProvider.getText('filter_success') : localeProvider.getText('filter_failed'),
                     style: TextStyle(
                       color: status == 'Success' ? Colors.greenAccent : Colors.redAccent,
                       fontWeight: FontWeight.bold,
@@ -269,17 +272,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
             const SizedBox(height: 24),
             const Divider(height: 1),
             const SizedBox(height: 16),
-            _buildDetailRow('Thẻ sử dụng:', cardName, themeProvider),
-            _buildDetailRow('Danh mục:', tx['category'] ?? 'Thanh toán', themeProvider),
-            _buildDetailRow('Thời gian:', createdAt, themeProvider),
-            _buildDetailRow('Mã giao dịch:', '#TXN-${tx['id'] ?? '0000'}', themeProvider),
+            _buildDetailRow(localeProvider.getText('card_used'), cardName, themeProvider),
+            _buildDetailRow(localeProvider.getText('category'), tx['category'] ?? localeProvider.getText('payment_label'), themeProvider),
+            _buildDetailRow(localeProvider.getText('time_label'), createdAt, themeProvider),
+            _buildDetailRow(localeProvider.getText('transaction_id'), '#TXN-${tx['id'] ?? tx['dbId'] ?? '0000'}', themeProvider),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () => Navigator.pop(ctx),
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent),
-                child: const Text('Đóng', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                child: Text(localeProvider.getText('close'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ),
           ],
@@ -303,6 +306,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   void _showExportResult(String title, String content) {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -314,7 +318,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Đóng', style: TextStyle(color: Colors.grey)),
+            child: Text(localeProvider.getText('close'), style: const TextStyle(color: Colors.grey)),
           )
         ],
       ),
@@ -429,7 +433,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               children: [
                                 const Icon(Icons.arrow_downward_rounded, color: Colors.redAccent, size: 16),
                                 const SizedBox(width: 4),
-                                Text('TỔNG CHI TIÊU', style: TextStyle(color: themeProvider.subtitleColor, fontSize: 11, fontWeight: FontWeight.bold)),
+                                Text(localeProvider.getText('total_expense'), style: TextStyle(color: themeProvider.subtitleColor, fontSize: 11, fontWeight: FontWeight.bold)),
                               ],
                             ),
                             const SizedBox(height: 6),
@@ -454,7 +458,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               children: [
                                 const Icon(Icons.arrow_upward_rounded, color: Colors.greenAccent, size: 16),
                                 const SizedBox(width: 4),
-                                Text('TỔNG NHẬN TIỀN', style: TextStyle(color: themeProvider.subtitleColor, fontSize: 11, fontWeight: FontWeight.bold)),
+                                Text(localeProvider.getText('total_income'), style: TextStyle(color: themeProvider.subtitleColor, fontSize: 11, fontWeight: FontWeight.bold)),
                               ],
                             ),
                             const SizedBox(height: 6),
@@ -479,11 +483,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Tổng số giao dịch: $totalCount',
+                        '${localeProvider.getText('total_transactions')}: $totalCount',
                         style: TextStyle(color: themeProvider.subtitleColor, fontSize: 12),
                       ),
                       Text(
-                        'Thành công: $successCount / $totalCount',
+                        '${localeProvider.getText('filter_success')}: $successCount / $totalCount',
                         style: TextStyle(color: themeProvider.accentColor, fontSize: 12, fontWeight: FontWeight.bold),
                       ),
                     ],
@@ -536,7 +540,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: themeProvider.cardBorderColor)),
               ),
               items: [
-                DropdownMenuItem(value: 'All', child: Text('${localeProvider.getText('filter_all')} (Tất cả thời gian)', style: TextStyle(color: themeProvider.textColor))),
+                DropdownMenuItem(value: 'All', child: Text('${localeProvider.getText('filter_all')} (${localeProvider.getText('all_time')})', style: TextStyle(color: themeProvider.textColor))),
                 DropdownMenuItem(value: 'Today', child: Text(localeProvider.getText('filter_today'), style: TextStyle(color: themeProvider.textColor))),
                 DropdownMenuItem(value: 'ThisMonth', child: Text(localeProvider.getText('filter_this_month'), style: TextStyle(color: themeProvider.textColor))),
                 DropdownMenuItem(value: 'LastMonth', child: Text(localeProvider.getText('filter_last_month'), style: TextStyle(color: themeProvider.textColor))),
@@ -557,7 +561,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     dropdownColor: themeProvider.dialogBgColor,
                     style: TextStyle(color: themeProvider.textColor, fontSize: 12),
                     decoration: InputDecoration(
-                      labelText: 'Trạng thái',
+                      labelText: localeProvider.getText('status'),
                       labelStyle: TextStyle(color: themeProvider.subtitleColor, fontSize: 12),
                       filled: true,
                       fillColor: themeProvider.cardColor,
@@ -581,7 +585,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     dropdownColor: themeProvider.dialogBgColor,
                     style: TextStyle(color: themeProvider.textColor, fontSize: 12),
                     decoration: InputDecoration(
-                      labelText: 'Loại thẻ / NFC',
+                      labelText: localeProvider.getText('card_type'),
                       labelStyle: TextStyle(color: themeProvider.subtitleColor, fontSize: 12),
                       filled: true,
                       fillColor: themeProvider.cardColor,
@@ -589,7 +593,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: themeProvider.cardBorderColor)),
                     ),
                     items: [
-                      DropdownMenuItem(value: 'All', child: Text('Tất cả loại thẻ', style: TextStyle(color: themeProvider.textColor))),
+                      DropdownMenuItem(value: 'All', child: Text(localeProvider.getText('filter_all_cards'), style: TextStyle(color: themeProvider.textColor))),
                       DropdownMenuItem(value: 'Visa', child: Text('Visa', style: TextStyle(color: themeProvider.textColor))),
                       DropdownMenuItem(value: 'Mastercard', child: Text('Mastercard', style: TextStyle(color: themeProvider.textColor))),
                       DropdownMenuItem(value: 'NFC', child: Text('NFC Contactless', style: TextStyle(color: themeProvider.textColor))),
@@ -631,11 +635,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       final tx = filtered[index];
                       final bool isExpense = tx['isExpense'] == true;
                       final double amount = _parseNum(tx['amount']);
-                      final String title = tx['title'] ?? 'Giao dịch';
-                      final String cardName = tx['cardName'] ?? 'Thẻ NFC';
+                      final String title = tx['title'] ?? localeProvider.getText('nfc_transaction');
+                      final String cardName = tx['cardName'] ?? localeProvider.getText('nfc_card');
                       final String status = tx['status'] ?? 'Success';
-                      final String dateStr = tx['createdAt'] != null
-                          ? DateTime.parse(tx['createdAt']).toLocal().toString().split('.')[0]
+                      final String? rawDate = tx['createdAt'] ?? tx['date'];
+                      final String dateStr = (rawDate != null && rawDate.isNotEmpty)
+                          ? DateTime.parse(rawDate).toLocal().toString().split('.')[0]
                           : '';
 
                       return Card(
@@ -677,7 +682,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                status == 'Success' ? 'Thành công' : 'Thất bại',
+                                status == 'Success' ? localeProvider.getText('filter_success') : localeProvider.getText('filter_failed'),
                                 style: TextStyle(
                                   color: status == 'Success' ? Colors.green : Colors.red,
                                   fontSize: 10,

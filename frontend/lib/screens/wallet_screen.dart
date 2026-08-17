@@ -264,10 +264,13 @@ class _WalletScreenState extends State<WalletScreen> {
                 children: [
                   TextFormField(
                     controller: nameController,
+                    keyboardType: TextInputType.text,
+                    enableSuggestions: true,
+                    autocorrect: true,
                     style: TextStyle(color: themeProvider.textColor),
                     decoration: InputDecoration(
                       labelText: 'Tên gợi nhớ của thẻ (Tùy chọn)',
-                      hintText: 'Để trống sẽ tự nhận diện loại thẻ + 4 số cuối',
+                      hintText: 'Ví dụ: Ví Tiêu Dùng, Thẻ Lương, Visa Gold...',
                       hintStyle: TextStyle(color: themeProvider.subtitleColor, fontSize: 11),
                       labelStyle: TextStyle(color: themeProvider.subtitleColor),
                       border: const OutlineInputBorder(),
@@ -276,8 +279,8 @@ class _WalletScreenState extends State<WalletScreen> {
                       if (v == null || v.trim().isEmpty) return null;
                       final clean = v.trim();
                       if (clean.length < 2 || clean.length > 50) return 'Tên thẻ phải từ 2 đến 50 ký tự';
-                      if (RegExp(r'[<>{}[\]\\\/@#$%^&*()=~|]').hasMatch(clean)) {
-                        return 'Tên thẻ không được chứa các ký tự đặc biệt';
+                      if (RegExp(r'[<>{}]').hasMatch(clean)) {
+                        return 'Tên thẻ chứa ký tự không hợp lệ';
                       }
                       return null;
                     },

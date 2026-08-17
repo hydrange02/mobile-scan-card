@@ -45,8 +45,8 @@ function validateCardInputs({ cardName, cardHolder, expiryDate, phone }) {
     if (cleanName.length < 2 || cleanName.length > 50) {
       return 'Tên thẻ phải gồm từ 2 đến 50 ký tự';
     }
-    if (/[<>{}[\]\\\/@#$%^&*()=~|]/.test(cleanName)) {
-      return 'Tên thẻ không được chứa các ký tự đặc biệt nguy hiểm';
+    if (/[<>{}]/.test(cleanName)) {
+      return 'Tên thẻ chứa ký tự không hợp lệ';
     }
   }
 
@@ -55,8 +55,8 @@ function validateCardInputs({ cardName, cardHolder, expiryDate, phone }) {
     if (cleanHolder.length < 2 || cleanHolder.length > 50) {
       return 'Tên chủ thẻ phải gồm từ 2 đến 50 ký tự';
     }
-    if (/[<>{}[\]\\\/@#$%^&*()=~|0-9]/.test(cleanHolder)) {
-      return 'Tên chủ thẻ chỉ được gồm chữ cái và khoảng trắng (Ví dụ: Nguyễn Văn A hoặc NGUYEN VAN A)';
+    if (/[<>{}]/.test(cleanHolder)) {
+      return 'Tên chủ thẻ chứa ký tự không hợp lệ';
     }
   }
 
