@@ -70,11 +70,11 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
               children: [
                 TextFormField(
                   controller: nameController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
+                  style: TextStyle(color: themeProvider.textColor),
+                  decoration: InputDecoration(
                     labelText: 'Tên thẻ (Vd: Visa Gold)',
-                    labelStyle: TextStyle(color: Colors.white70),
-                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(color: themeProvider.subtitleColor),
+                    border: const OutlineInputBorder(),
                   ),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return 'Vui lòng nhập tên thẻ';
@@ -89,11 +89,11 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: holderController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
+                  style: TextStyle(color: themeProvider.textColor),
+                  decoration: InputDecoration(
                     labelText: 'Tên chủ sở hữu (Vd: Nguyễn Văn A hoặc NGUYEN VAN A)',
-                    labelStyle: TextStyle(color: Colors.white70),
-                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(color: themeProvider.subtitleColor),
+                    border: const OutlineInputBorder(),
                   ),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return 'Vui lòng nhập tên chủ thẻ';
@@ -108,11 +108,11 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: expiryController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
+                  style: TextStyle(color: themeProvider.textColor),
+                  decoration: InputDecoration(
                     labelText: 'Ngày hết hạn (MM/YY)',
-                    labelStyle: TextStyle(color: Colors.white70),
-                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(color: themeProvider.subtitleColor),
+                    border: const OutlineInputBorder(),
                   ),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return null;
@@ -207,6 +207,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
   }
 
   void _showTopUpDialog() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     if (CardUtils.isCardExpired(_card['expiryDate'])) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Thẻ này đã hết hạn sử dụng. Vui lòng bấm ✏️ ở góc trên để cập nhật hạn thẻ trước khi nạp tiền!'), backgroundColor: Colors.red),
@@ -218,16 +219,18 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
     final amountController = TextEditingController(text: localeProvider.isVND ? '100000' : '50.00');
     final formKey = GlobalKey<FormState>();
 
+    final accentCol = themeProvider.isDarkMode ? Colors.greenAccent : Colors.green;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF16213E),
+        backgroundColor: themeProvider.dialogBgColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
-          children: const [
-            Icon(Icons.add_card, color: Colors.greenAccent, size: 28),
-            SizedBox(width: 8),
-            Text('Nạp Tiền Vào Thẻ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+          children: [
+            Icon(Icons.add_card, color: accentCol, size: 28),
+            const SizedBox(width: 8),
+            Text('Nạp Tiền Vào Thẻ', style: TextStyle(color: themeProvider.textColor, fontWeight: FontWeight.bold, fontSize: 18)),
           ],
         ),
         content: Form(
@@ -237,18 +240,18 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
             children: [
               Text(
                 'Nạp tiền trực tiếp vào ${_card['cardName'] ?? 'Thẻ'}. Số dư hiện tại: ${localeProvider.formatAmount(_parseNum(_card['balance']))}',
-                style: const TextStyle(color: Colors.white70, fontSize: 13),
+                style: TextStyle(color: themeProvider.subtitleColor, fontSize: 13),
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: amountController,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                style: const TextStyle(color: Colors.greenAccent, fontSize: 24, fontWeight: FontWeight.bold),
+                style: TextStyle(color: accentCol, fontSize: 24, fontWeight: FontWeight.bold),
                 decoration: InputDecoration(
                   labelText: 'Số tiền nạp (${localeProvider.currencySymbol})',
-                  labelStyle: const TextStyle(color: Colors.white70),
+                  labelStyle: TextStyle(color: themeProvider.subtitleColor),
                   prefixText: '${localeProvider.currencySymbol} ',
-                  prefixStyle: const TextStyle(color: Colors.greenAccent, fontSize: 24),
+                  prefixStyle: TextStyle(color: accentCol, fontSize: 24, fontWeight: FontWeight.bold),
                   border: const OutlineInputBorder(),
                 ),
                 validator: (v) {
@@ -495,40 +498,45 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                 const SizedBox(height: 24),
 
                 // 2. Details List Group
-                const Text(
+                Text(
                   'Thông Tin Chi Tiết Thẻ',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: themeProvider.textColor),
                 ),
                 const SizedBox(height: 12),
 
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.05),
+                    color: themeProvider.cardColor,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white12),
+                    border: Border.all(color: themeProvider.cardBorderColor),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
+                    ],
                   ),
                   child: Column(
                     children: [
-                      _buildInfoTile(Icons.person, 'Chủ sở hữu', holder),
-                      const Divider(color: Colors.white12, height: 1),
-                      _buildInfoTile(Icons.credit_card, 'Số thẻ đầy đủ', cardNumber),
-                      const Divider(color: Colors.white12, height: 1),
-                      _buildInfoTile(Icons.calendar_today, 'Ngày hết hạn', expiry),
-                      const Divider(color: Colors.white12, height: 1),
-                      _buildInfoTile(Icons.phone, 'Số ĐT liên kết', phone),
-                      const Divider(color: Colors.white12, height: 1),
+                      _buildInfoTile(Icons.person, 'Chủ sở hữu', holder, themeProvider),
+                      Divider(color: themeProvider.cardBorderColor, height: 1),
+                      _buildInfoTile(Icons.credit_card, 'Số thẻ đầy đủ', cardNumber, themeProvider),
+                      Divider(color: themeProvider.cardBorderColor, height: 1),
+                      _buildInfoTile(Icons.calendar_today, 'Ngày hết hạn', expiry, themeProvider),
+                      Divider(color: themeProvider.cardBorderColor, height: 1),
+                      _buildInfoTile(Icons.phone, 'Số ĐT liên kết', phone, themeProvider),
+                      Divider(color: themeProvider.cardBorderColor, height: 1),
                       _buildInfoTile(
                         Icons.account_balance_wallet,
                         'Số dư khả dụng',
                         localeProvider.formatAmount(balance),
-                        valueColor: Colors.greenAccent,
+                        themeProvider,
+                        valueColor: Colors.green,
                       ),
-                      const Divider(color: Colors.white12, height: 1),
+                      Divider(color: themeProvider.cardBorderColor, height: 1),
                       _buildInfoTile(
                         Icons.star,
                         'Trạng thái thẻ',
                         isExpired ? 'Đã hết hạn (Cần gia hạn)' : (isDefault ? 'Thẻ mặc định' : 'Thẻ phụ'),
-                        valueColor: isExpired ? Colors.redAccent : (isDefault ? Colors.amber : Colors.white70),
+                        themeProvider,
+                        valueColor: isExpired ? Colors.redAccent : (isDefault ? Colors.amber : themeProvider.subtitleColor),
                       ),
                     ],
                   ),
@@ -544,8 +552,8 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                         icon: const Icon(Icons.add_card),
                         label: const Text('NẠP TIỀN VÀO THẺ', style: TextStyle(fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.greenAccent,
-                          foregroundColor: Colors.black,
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
@@ -558,7 +566,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                         icon: const Icon(Icons.edit_note),
                         label: const Text('Chỉnh Sửa Thẻ'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.purpleAccent,
+                          backgroundColor: themeProvider.primaryColor,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -572,13 +580,13 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
     );
   }
 
-  Widget _buildInfoTile(IconData icon, String label, String value, {Color? valueColor}) {
+  Widget _buildInfoTile(IconData icon, String label, String value, ThemeProvider themeProvider, {Color? valueColor}) {
     return ListTile(
-      leading: Icon(icon, color: Colors.cyanAccent, size: 22),
-      title: Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+      leading: Icon(icon, color: themeProvider.accentColor, size: 22),
+      title: Text(label, style: TextStyle(color: themeProvider.subtitleColor, fontSize: 13)),
       trailing: Text(
         value,
-        style: TextStyle(color: valueColor ?? Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+        style: TextStyle(color: valueColor ?? themeProvider.textColor, fontWeight: FontWeight.bold, fontSize: 14),
       ),
     );
   }

@@ -484,7 +484,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       ),
                       Text(
                         'Thành công: $successCount / $totalCount',
-                        style: const TextStyle(color: Colors.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: themeProvider.accentColor, fontSize: 12, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -503,7 +503,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               decoration: InputDecoration(
                 hintText: localeProvider.getText('search_hint'),
                 hintStyle: TextStyle(color: themeProvider.subtitleColor),
-                prefixIcon: const Icon(Icons.search, color: Colors.cyanAccent),
+                prefixIcon: Icon(Icons.search, color: themeProvider.accentColor),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear, color: Colors.grey),

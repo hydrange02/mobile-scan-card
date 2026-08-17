@@ -439,16 +439,21 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
     final localeProvider = Provider.of<LocaleProvider>(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
 
+    final activeColor = themeProvider.isDarkMode ? Colors.cyanAccent : const Color(0xFF6366F1);
+
     return Scaffold(
       backgroundColor: themeProvider.backgroundColor,
       appBar: AppBar(
-        title: Text(localeProvider.getText('payment_title')),
+        title: Text(
+          localeProvider.getText('payment_title'),
+          style: TextStyle(color: themeProvider.textColor, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: Colors.cyanAccent,
-          labelColor: Colors.cyanAccent,
+          indicatorColor: activeColor,
+          labelColor: activeColor,
           unselectedLabelColor: themeProvider.subtitleColor,
           tabs: [
             Tab(icon: const Icon(Icons.nfc), text: localeProvider.getText('nfc_tab')),
@@ -460,31 +465,45 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         controller: _tabController,
         children: [
           // Tab 1: NFC Tap to Pay
-          _buildNfcPaymentTab(localeProvider),
+          _buildNfcPaymentTab(localeProvider, themeProvider),
           // Tab 2: QR Code Payment
-          _buildQrPaymentTab(localeProvider),
+          _buildQrPaymentTab(localeProvider, themeProvider),
         ],
       ),
     );
   }
 
-  Widget _buildNfcPaymentTab(LocaleProvider localeProvider) {
+  Widget _buildNfcPaymentTab(LocaleProvider localeProvider, ThemeProvider themeProvider) {
+    final accentText = themeProvider.isDarkMode ? Colors.cyanAccent : const Color(0xFF0284C7);
+    final btnBg = themeProvider.isDarkMode ? Colors.cyanAccent : const Color(0xFF6366F1);
+    final btnFg = themeProvider.isDarkMode ? Colors.black : Colors.white;
+
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
         // Card Selection Dropdown
-        const Text('Chọn Nguồn Thẻ Thanh Toán', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold)),
+        Text(
+          'Chọn Nguồn Thẻ Thanh Toán',
+          style: TextStyle(color: themeProvider.subtitleColor, fontSize: 13, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         _isLoadingCards
-            ? const LinearProgressIndicator(color: Colors.purpleAccent)
+            ? CircularProgressIndicator(color: themeProvider.primaryColor)
             : DropdownButtonFormField<Map<String, dynamic>>(
                 initialValue: _selectedCard,
-                dropdownColor: const Color(0xFF16213E),
-                style: const TextStyle(color: Colors.white),
+                dropdownColor: themeProvider.dialogBgColor,
+                style: TextStyle(color: themeProvider.textColor),
                 decoration: InputDecoration(
                   filled: true,
-                  fillColor: Colors.white.withValues(alpha: 0.05),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                  fillColor: themeProvider.inputFillColor,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: themeProvider.cardBorderColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: themeProvider.cardBorderColor),
+                  ),
                 ),
                 items: _cards.map((c) {
                   final String name = c['cardName']?.toString() ?? 'Thẻ';
@@ -495,7 +514,10 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                     value: c,
                     child: Text(
                       '$name (**** $last4)${isExp ? " [ĐÃ HẾT HẠN]" : ""}',
-                      style: TextStyle(color: isExp ? Colors.redAccent : Colors.white, fontWeight: isExp ? FontWeight.bold : FontWeight.normal),
+                      style: TextStyle(
+                        color: isExp ? Colors.redAccent : themeProvider.textColor,
+                        fontWeight: isExp ? FontWeight.bold : FontWeight.normal,
+                      ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),
@@ -507,25 +529,35 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         const SizedBox(height: 20),
 
         // Amount Input
-        Text('Số Tiền Thanh Toán (${localeProvider.currencySymbol})', style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold)),
+        Text(
+          'Số Tiền Thanh Toán (${localeProvider.currencySymbol})',
+          style: TextStyle(color: themeProvider.subtitleColor, fontSize: 13, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         TextField(
           controller: _amountController,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          style: const TextStyle(color: Colors.cyanAccent, fontSize: 26, fontWeight: FontWeight.bold),
+          style: TextStyle(color: accentText, fontSize: 26, fontWeight: FontWeight.bold),
           onChanged: (val) => setState(() {}),
           decoration: InputDecoration(
             prefixText: '${localeProvider.currencySymbol} ',
-            prefixStyle: const TextStyle(color: Colors.cyanAccent, fontSize: 26),
+            prefixStyle: TextStyle(color: accentText, fontSize: 26, fontWeight: FontWeight.bold),
             filled: true,
-            fillColor: Colors.white.withValues(alpha: 0.05),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+            fillColor: themeProvider.inputFillColor,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: themeProvider.cardBorderColor),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: themeProvider.cardBorderColor),
+            ),
           ),
         ),
 
         const SizedBox(height: 12),
 
-        // Quick Amount Chips (Horizontally Scrollable to prevent overflow in VND)
+        // Quick Amount Chips (Horizontally Scrollable)
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
@@ -543,8 +575,13 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                   label: Text(localeProvider.formatAmount(chipVal)),
                   selected: isSelected,
                   onSelected: (_) => setState(() => _amountController.text = amt),
-                  selectedColor: Colors.purpleAccent,
-                  labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.white70),
+                  selectedColor: themeProvider.primaryColor,
+                  backgroundColor: themeProvider.cardColor,
+                  side: BorderSide(color: isSelected ? Colors.transparent : themeProvider.cardBorderColor),
+                  labelStyle: TextStyle(
+                    color: isSelected ? Colors.white : themeProvider.textColor,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
                 ),
               );
             }).toList(),
@@ -556,13 +593,20 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         // Note Input
         TextField(
           controller: _noteController,
-          style: const TextStyle(color: Colors.white),
+          style: TextStyle(color: themeProvider.textColor),
           decoration: InputDecoration(
             labelText: 'Nội dung / Ghi chú thanh toán',
-            labelStyle: const TextStyle(color: Colors.white70),
+            labelStyle: TextStyle(color: themeProvider.subtitleColor),
             filled: true,
-            fillColor: Colors.white.withValues(alpha: 0.05),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+            fillColor: themeProvider.inputFillColor,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: themeProvider.cardBorderColor),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: themeProvider.cardBorderColor),
+            ),
           ),
         ),
 
@@ -584,8 +628,9 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
               child: Text('CHẠM THẺ NFC ĐỂ THANH TOÁN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.cyanAccent,
-              foregroundColor: Colors.black,
+              backgroundColor: btnBg,
+              foregroundColor: btnFg,
+              elevation: 4,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
           ),
@@ -595,10 +640,11 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
   }
 
   void _showQrScannerModal() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF16213E),
+      backgroundColor: themeProvider.dialogBgColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -612,21 +658,24 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                 Container(
                   width: 40,
                   height: 4,
-                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                  decoration: BoxDecoration(color: themeProvider.subtitleColor.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2)),
                 ),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Row(
+                    Row(
                       children: [
-                        Icon(Icons.qr_code_scanner_rounded, color: Colors.cyanAccent, size: 28),
-                        SizedBox(width: 10),
-                        Text('Ống Kính Quét Mã QR', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                        Icon(Icons.qr_code_scanner_rounded, color: themeProvider.accentColor, size: 28),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Ống Kính Quét Mã QR',
+                          style: TextStyle(color: themeProvider.textColor, fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
                       ],
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white54),
+                      icon: Icon(Icons.close, color: themeProvider.subtitleColor),
                       onPressed: () => Navigator.pop(ctx),
                     ),
                   ],
@@ -639,7 +688,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                     decoration: BoxDecoration(
                       color: Colors.black,
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.5), width: 1.5),
+                      border: Border.all(color: themeProvider.accentColor.withValues(alpha: 0.5), width: 1.5),
                     ),
                     child: Stack(
                       alignment: Alignment.center,
@@ -704,8 +753,8 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                     icon: const Icon(Icons.verified_user_rounded),
                     label: const Text('XÁC THỰC PIN & THANH TOÁN (MÁY ẢO / MÁY THẬT)'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.cyanAccent,
-                      foregroundColor: Colors.black,
+                      backgroundColor: themeProvider.accentColor,
+                      foregroundColor: themeProvider.isDarkMode ? Colors.black : Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     ),
                   ),
@@ -718,23 +767,34 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
     );
   }
 
-  Widget _buildQrPaymentTab(LocaleProvider localeProvider) {
+  Widget _buildQrPaymentTab(LocaleProvider localeProvider, ThemeProvider themeProvider) {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: themeProvider.cardColor,
             borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: themeProvider.cardBorderColor),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Column(
             children: [
-              const Text('MÃ QR THANH TOÁN', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(
+                'MÃ QR THANH TOÁN',
+                style: TextStyle(color: themeProvider.textColor, fontWeight: FontWeight.bold, fontSize: 16),
+              ),
               const SizedBox(height: 6),
               Text(
                 'Quét mã này bằng ví điện tử để chuyển tiền đến ví',
-                style: TextStyle(color: Colors.grey[700], fontSize: 12),
+                style: TextStyle(color: themeProvider.subtitleColor, fontSize: 12),
               ),
               const SizedBox(height: 20),
 
@@ -762,7 +822,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                 fit: BoxFit.scaleDown,
                 child: Text(
                   localeProvider.formatAmount(double.tryParse(_amountController.text) ?? 0),
-                  style: const TextStyle(color: Colors.purple, fontSize: 28, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: themeProvider.primaryColor, fontSize: 28, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -778,7 +838,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
             icon: const Icon(Icons.qr_code_scanner),
             label: const Text('QUÉT MÃ QR KHÁCH HÀNG / CỬA HÀNG'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.purpleAccent,
+              backgroundColor: themeProvider.primaryColor,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
