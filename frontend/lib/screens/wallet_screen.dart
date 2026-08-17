@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'dart:convert';
 import '../providers/auth_provider.dart';
 import '../providers/locale_provider.dart';
+import '../providers/theme_provider.dart';
 import '../services/api_config.dart';
 import '../services/haptic_service.dart';
 import '../services/nfc_service.dart';
@@ -103,6 +104,7 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Future<void> _addCardApi(String name, String number) async {
+    final messenger = ScaffoldMessenger.of(context);
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final response = await http.post(
@@ -115,21 +117,35 @@ class _WalletScreenState extends State<WalletScreen> {
       );
       if (response.statusCode == 201 && mounted) {
         HapticService.successFeedback();
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
           const SnackBar(content: Text('Thêm thẻ mới thành công!'), backgroundColor: Colors.green),
         );
         _fetchCards();
+      } else {
+        if (!mounted) return;
+        final resData = json.decode(response.body);
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(resData['error'] ?? 'Không thể thêm thẻ mới. Vui lòng thử lại!'),
+            backgroundColor: Colors.redAccent,
+            duration: const Duration(seconds: 4),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi thêm thẻ: $e'), backgroundColor: Colors.red),
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
+          SnackBar(content: Text('Lỗi kết nối khi thêm thẻ: $e'), backgroundColor: Colors.red),
         );
       }
     }
   }
 
   void _scanNfcCard() async {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     Navigator.pop(context); // Close selection modal
     
     // Show scanning dialog
@@ -137,25 +153,25 @@ class _WalletScreenState extends State<WalletScreen> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF16213E),
+        backgroundColor: themeProvider.dialogBgColor,
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          children: const [
-            SizedBox(height: 12),
-            Icon(Icons.nfc, size: 60, color: Colors.cyanAccent),
-            SizedBox(height: 16),
+          children: [
+            const SizedBox(height: 12),
+            const Icon(Icons.nfc, size: 60, color: Colors.cyanAccent),
+            const SizedBox(height: 16),
             Text(
               'Đang quét thẻ NFC...',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+              style: TextStyle(color: themeProvider.textColor, fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
               'Vui lòng đưa thẻ NFC chạm vào lưng thiết bị',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white70, fontSize: 12),
+              style: TextStyle(color: themeProvider.subtitleColor, fontSize: 12),
             ),
-            SizedBox(height: 16),
-            CircularProgressIndicator(color: Colors.cyanAccent),
+            const SizedBox(height: 16),
+            const CircularProgressIndicator(color: Colors.cyanAccent),
           ],
         ),
       ),
@@ -185,6 +201,7 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   void _showManualInputDialog() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     Navigator.pop(context); // Close selection modal
 
     final formKey = GlobalKey<FormState>();
@@ -230,13 +247,13 @@ class _WalletScreenState extends State<WalletScreen> {
           }
 
           return AlertDialog(
-            backgroundColor: const Color(0xFF16213E),
+            backgroundColor: themeProvider.dialogBgColor,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: const Row(
+            title: Row(
               children: [
-                Icon(Icons.credit_card_rounded, color: Colors.cyanAccent, size: 28),
-                SizedBox(width: 8),
-                Text('Nhập Thông Tin Thẻ Thủ Công', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                const Icon(Icons.credit_card_rounded, color: Colors.cyanAccent, size: 28),
+                const SizedBox(width: 8),
+                Text('Nhập Thông Tin Thẻ Thủ Công', style: TextStyle(color: themeProvider.textColor, fontSize: 18, fontWeight: FontWeight.bold)),
               ],
             ),
             content: Form(
@@ -247,13 +264,13 @@ class _WalletScreenState extends State<WalletScreen> {
                 children: [
                   TextFormField(
                     controller: nameController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
+                    style: TextStyle(color: themeProvider.textColor),
+                    decoration: InputDecoration(
                       labelText: 'Tên gợi nhớ của thẻ (Tùy chọn)',
                       hintText: 'Để trống sẽ tự nhận diện loại thẻ + 4 số cuối',
-                      hintStyle: TextStyle(color: Colors.white38, fontSize: 11),
-                      labelStyle: TextStyle(color: Colors.white70),
-                      border: OutlineInputBorder(),
+                      hintStyle: TextStyle(color: themeProvider.subtitleColor, fontSize: 11),
+                      labelStyle: TextStyle(color: themeProvider.subtitleColor),
+                      border: const OutlineInputBorder(),
                     ),
                     validator: (v) {
                       if (v == null || v.trim().isEmpty) return null;
@@ -268,15 +285,15 @@ class _WalletScreenState extends State<WalletScreen> {
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: numberController,
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: themeProvider.textColor),
                     keyboardType: TextInputType.number,
                     maxLength: 19,
                     onChanged: updateBrand,
                     decoration: InputDecoration(
                       labelText: 'Số thẻ ngân hàng (15-19 chữ số)',
-                      labelStyle: const TextStyle(color: Colors.white70),
+                      labelStyle: TextStyle(color: themeProvider.subtitleColor),
                       hintText: 'Ví dụ: 4111222233334444 hoặc 9704123456789012',
-                      hintStyle: const TextStyle(color: Colors.white38, fontSize: 11),
+                      hintStyle: TextStyle(color: themeProvider.subtitleColor, fontSize: 11),
                       border: const OutlineInputBorder(),
                       suffixIcon: detectedBrand.isNotEmpty
                           ? Padding(
@@ -331,7 +348,7 @@ class _WalletScreenState extends State<WalletScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Hủy', style: TextStyle(color: Colors.white54)),
+                child: Text('Hủy', style: TextStyle(color: themeProvider.subtitleColor)),
               ),
               ElevatedButton(
                 onPressed: () {
@@ -352,10 +369,11 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   void _showAddCardOptions() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     HapticService.selectionFeedback();
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: themeProvider.dialogBgColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -365,9 +383,9 @@ class _WalletScreenState extends State<WalletScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Chọn phương thức thêm thẻ',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: themeProvider.textColor),
             ),
             const SizedBox(height: 20),
             ListTile(
@@ -376,8 +394,8 @@ class _WalletScreenState extends State<WalletScreen> {
                 decoration: BoxDecoration(color: Colors.cyanAccent.withValues(alpha: 0.15), shape: BoxShape.circle),
                 child: const Icon(Icons.nfc, color: Colors.cyanAccent),
               ),
-              title: const Text('Quét thẻ bằng NFC', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              subtitle: const Text('Chạm thẻ NFC vào thiết bị để tự động đọc', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              title: Text('Quét thẻ bằng NFC', style: TextStyle(color: themeProvider.textColor, fontWeight: FontWeight.bold)),
+              subtitle: Text('Chạm thẻ NFC vào thiết bị để tự động đọc', style: TextStyle(color: themeProvider.subtitleColor, fontSize: 12)),
               onTap: _scanNfcCard,
             ),
             const Divider(color: Colors.white12),
@@ -387,8 +405,8 @@ class _WalletScreenState extends State<WalletScreen> {
                 decoration: BoxDecoration(color: Colors.purpleAccent.withValues(alpha: 0.15), shape: BoxShape.circle),
                 child: const Icon(Icons.edit_note, color: Colors.purpleAccent),
               ),
-              title: const Text('Nhập thông tin thủ công', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              subtitle: const Text('Tự nhập Tên thẻ và Số thẻ ngân hàng', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              title: Text('Nhập thông tin thủ công', style: TextStyle(color: themeProvider.textColor, fontWeight: FontWeight.bold)),
+              subtitle: Text('Tự nhập Tên thẻ và Số thẻ ngân hàng', style: TextStyle(color: themeProvider.subtitleColor, fontSize: 12)),
               onTap: _showManualInputDialog,
             ),
             const SizedBox(height: 10),
@@ -400,9 +418,10 @@ class _WalletScreenState extends State<WalletScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
     final localeProvider = Provider.of<LocaleProvider>(context);
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: themeProvider.backgroundColor,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.purpleAccent))
           : ListView(
@@ -415,13 +434,13 @@ class _WalletScreenState extends State<WalletScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Ví Điện Tử',
-                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: themeProvider.textColor),
                         ),
                         Text(
                           'Quản lý ${_cards.length} thẻ trong ví',
-                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                          style: TextStyle(color: themeProvider.subtitleColor, fontSize: 13),
                         ),
                       ],
                     ),

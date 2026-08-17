@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/locale_provider.dart';
@@ -190,6 +191,9 @@ class _LockOverlayScreenState extends State<LockOverlayScreen> {
                     maxLength: 6,
                     style: const TextStyle(color: Colors.white),
                     obscureText: true,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                    ],
                     decoration: const InputDecoration(
                       labelText: 'Mã PIN mới (đúng 6 chữ số)',
                       labelStyle: TextStyle(color: Colors.white70),
@@ -335,6 +339,9 @@ class _LockOverlayScreenState extends State<LockOverlayScreen> {
                     obscureText: true,
                     textAlign: TextAlign.center,
                     autofocus: true,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                    ],
                     style: const TextStyle(color: Colors.white, fontSize: 24, letterSpacing: 10, fontWeight: FontWeight.bold),
                     decoration: InputDecoration(
                       hintText: '••••••',

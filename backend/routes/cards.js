@@ -55,8 +55,8 @@ function validateCardInputs({ cardName, cardHolder, expiryDate, phone }) {
     if (cleanHolder.length < 2 || cleanHolder.length > 50) {
       return 'Tên chủ thẻ phải gồm từ 2 đến 50 ký tự';
     }
-    if (!/^[A-Za-z\s.\-]+$/.test(cleanHolder)) {
-      return 'Tên chủ thẻ chỉ được gồm chữ cái không dấu (A-Z) và khoảng trắng (Ví dụ: NGUYEN VAN A)';
+    if (/[<>{}[\]\\\/@#$%^&*()=~|0-9]/.test(cleanHolder)) {
+      return 'Tên chủ thẻ chỉ được gồm chữ cái và khoảng trắng (Ví dụ: Nguyễn Văn A hoặc NGUYEN VAN A)';
     }
   }
 
@@ -125,7 +125,7 @@ router.post('/', async (req, res) => {
           userId,
           cardName: finalCardName,
           cardNumber: rawCardNumber,
-          cardHolder: cardHolder && String(cardHolder).trim().length > 0 ? String(cardHolder).trim().toUpperCase() : 'CHỦ THẺ NFC',
+          cardHolder: cardHolder && String(cardHolder).trim().length > 0 ? String(cardHolder).trim() : 'CHỦ THẺ NFC',
           expiryDate: expiryDate && String(expiryDate).trim().length > 0 ? String(expiryDate).trim() : '12/28',
           phone: phone ? String(phone).trim() : '',
           balance: safeBalance,
@@ -179,7 +179,7 @@ router.put('/:id', async (req, res) => {
       where: { id: cardId },
       data: {
         ...(cardName !== undefined && { cardName: cardName.trim() }),
-        ...(cardHolder !== undefined && { cardHolder: cardHolder.trim().toUpperCase() }),
+        ...(cardHolder !== undefined && { cardHolder: cardHolder.trim() }),
         ...(expiryDate !== undefined && { expiryDate: expiryDate.trim() }),
         ...(phone !== undefined && { phone: phone.trim() }),
       }

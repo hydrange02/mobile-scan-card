@@ -15,16 +15,16 @@ router.post('/register', async (req, res) => {
     const cleanUsername = username != null ? String(username).trim() : '';
 
     if (!cleanUsername || !cleanEmail || !cleanPassword || !strPin) {
-      return res.status(400).json({ error: 'All fields including PIN are required' });
+      return res.status(400).json({ error: 'Vui lòng nhập đầy đủ tất cả thông tin (bao gồm Mã PIN)' });
     }
     if (!/^\d{6}$/.test(strPin)) {
       return res.status(400).json({ error: 'Mã PIN bảo mật phải gồm đúng 6 chữ số' });
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
-      return res.status(400).json({ error: 'Định dạng email không hợp lệ' });
+      return res.status(400).json({ error: 'Định dạng Email không hợp lệ (không chứa khoảng trắng)' });
     }
     if (cleanPassword.length < 6) {
-      return res.status(400).json({ error: 'Mật khẩu phải từ 6 ký tự trở lên (không tính khoảng trắng đầu/cuối)' });
+      return res.status(400).json({ error: 'Mật khẩu phải từ 6 ký tự trở lên' });
     }
 
     const hashedPassword = await bcrypt.hash(cleanPassword, 10);
@@ -35,7 +35,7 @@ router.post('/register', async (req, res) => {
     res.status(201).json({ id: user.id, username: user.username, email: user.email });
   } catch (error) {
     console.error("Register error:", error);
-    res.status(400).json({ error: 'Registration failed: Email might already exist' });
+    res.status(400).json({ error: 'Đăng ký thất bại: Email này đã được sử dụng' });
   }
 });
 
@@ -46,11 +46,11 @@ router.post('/login', async (req, res) => {
     const cleanPassword = password != null ? String(password).trim() : '';
 
     if (!cleanEmail || !cleanPassword) {
-      return res.status(400).json({ error: 'Email and password are required' });
+      return res.status(400).json({ error: 'Vui lòng nhập Email và Mật khẩu' });
     }
     const user = await prisma.user.findUnique({ where: { email: cleanEmail } });
     if (!user || !(await bcrypt.compare(cleanPassword, user.password))) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+      return res.status(401).json({ error: 'Email hoặc mật khẩu không chính xác' });
     }
     const secret = process.env.JWT_SECRET || 'supersecretnfcwalletkey123';
     const token = jwt.sign({ userId: user.id }, secret, { expiresIn: '24h' });

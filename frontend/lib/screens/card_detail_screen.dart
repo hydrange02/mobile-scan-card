@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:provider/provider.dart';
@@ -7,6 +8,7 @@ import '../services/haptic_service.dart';
 import '../services/card_utils.dart';
 import '../providers/auth_provider.dart';
 import '../providers/locale_provider.dart';
+import '../providers/theme_provider.dart';
 
 class CardDetailScreen extends StatefulWidget {
   final Map<String, dynamic> cardData;
@@ -46,6 +48,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
   }
 
   void _showEditCardDialog() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     HapticService.selectionFeedback();
     final holderController = TextEditingController(text: _card['cardHolder']?.toString() ?? 'Chủ Thẻ NFC');
     final expiryController = TextEditingController(text: _card['expiryDate']?.toString() ?? '12/28');
@@ -57,8 +60,8 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF16213E),
-        title: const Text('Cập Nhật Thông Tin Thẻ', style: TextStyle(color: Colors.white)),
+        backgroundColor: themeProvider.dialogBgColor,
+        title: Text('Cập Nhật Thông Tin Thẻ', style: TextStyle(color: themeProvider.textColor)),
         content: Form(
           key: formKey,
           child: SingleChildScrollView(
@@ -88,7 +91,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                   controller: holderController,
                   style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
-                    labelText: 'Tên chủ sở hữu (không dấu, vd: NGUYEN VAN A)',
+                    labelText: 'Tên chủ sở hữu (Vd: Nguyễn Văn A hoặc NGUYEN VAN A)',
                     labelStyle: TextStyle(color: Colors.white70),
                     border: OutlineInputBorder(),
                   ),
@@ -96,8 +99,8 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                     if (v == null || v.trim().isEmpty) return 'Vui lòng nhập tên chủ thẻ';
                     final clean = v.trim();
                     if (clean.length < 2 || clean.length > 50) return 'Tên chủ thẻ phải từ 2 đến 50 ký tự';
-                    if (!RegExp(r'^[A-Za-z\s.\-]+$').hasMatch(clean)) {
-                      return 'Tên chủ thẻ chỉ được gồm chữ cái không dấu (A-Z)';
+                    if (RegExp(r'[<>{}[\]\\\/@#$%^&*()=~|0-9]').hasMatch(clean)) {
+                      return 'Tên chủ thẻ chỉ được gồm chữ cái và khoảng trắng';
                     }
                     return null;
                   },
@@ -123,11 +126,14 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                 TextFormField(
                   controller: phoneController,
                   keyboardType: TextInputType.phone,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
+                  style: TextStyle(color: themeProvider.textColor),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[\d+]')),
+                  ],
+                  decoration: InputDecoration(
                     labelText: 'Số điện thoại liên kết (Vd: 0912345678)',
-                    labelStyle: TextStyle(color: Colors.white70),
-                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(color: themeProvider.subtitleColor),
+                    border: const OutlineInputBorder(),
                   ),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return null;
@@ -281,8 +287,9 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                   );
                   if (response.statusCode == 201 && mounted) {
                     HapticService.successFeedback();
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Nạp tiền thành công +\$${amt.toStringAsFixed(2)}!'), backgroundColor: Colors.green),
+                      SnackBar(content: Text('Nạp tiền thành công +${localeProvider.formatAmount(amt)}!'), backgroundColor: Colors.green),
                     );
                     _refreshCardDetails();
                   } else {
@@ -330,14 +337,16 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
     final double balance = _parseNum(_card['balance']);
     final bool isExpired = CardUtils.isCardExpired(expiry);
 
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: themeProvider.backgroundColor,
       appBar: AppBar(
         title: Text(
           _card['cardName']?.toString() ?? 'Chi Tiết Thẻ',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(color: themeProvider.textColor, fontWeight: FontWeight.bold),
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: themeProvider.textColor),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
