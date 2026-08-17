@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'dart:convert';
 import '../providers/auth_provider.dart';
 import '../providers/locale_provider.dart';
+import '../providers/theme_provider.dart';
 import '../services/api_config.dart';
 import '../services/autolock_service.dart';
 import '../main.dart';
@@ -30,11 +32,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _notificationsEnabled = true;
 
   Future<void> _updatePassword() async {
+    final messenger = ScaffoldMessenger.of(context);
     if (!_passwordFormKey.currentState!.validate()) return;
 
     if (_passwordController.text.trim() == _newPasswordController.text.trim()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mật khẩu mới không được trùng với mật khẩu hiện tại!'), backgroundColor: Colors.red),
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Mật khẩu mới không được trùng với mật khẩu hiện tại!'), backgroundColor: Colors.orangeAccent),
       );
       return;
     }
@@ -55,7 +59,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (response.statusCode == 200) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
           SnackBar(
             content: Text('${localeProvider.getText('update_password')} thành công!'),
             backgroundColor: Colors.green,
@@ -65,12 +70,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _newPasswordController.clear();
       } else {
         final resData = jsonDecode(response.body);
-        throw Exception(resData['error'] ?? 'Cập nhật thất bại');
+        throw Exception(resData['error'] ?? 'Cập nhật mật khẩu thất bại');
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi: ${e.toString().replaceAll('Exception: ', '')}'), backgroundColor: Colors.red),
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(content: Text('Lỗi: ${e.toString().replaceAll('Exception: ', '')}'), backgroundColor: Colors.redAccent),
       );
     } finally {
       if (mounted) setState(() => _isLoadingPassword = false);
@@ -78,12 +84,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _updatePin() async {
+    final messenger = ScaffoldMessenger.of(context);
     if (!_pinFormKey.currentState!.validate()) return;
 
     if (_currentPinController.text.trim().isNotEmpty &&
         _currentPinController.text.trim() == _newPinController.text.trim()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mã PIN mới không được trùng với Mã PIN hiện tại!'), backgroundColor: Colors.red),
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Mã PIN mới không được trùng với Mã PIN hiện tại!'), backgroundColor: Colors.orangeAccent),
       );
       return;
     }
@@ -104,7 +112,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (response.statusCode == 200) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
           SnackBar(
             content: Text(hasPin ? 'Đổi Mã PIN thành công!' : 'Tạo Mã PIN thành công!'),
             backgroundColor: Colors.green,
@@ -115,12 +124,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         await authProvider.fetchUserProfile();
       } else {
         final resData = jsonDecode(response.body);
-        throw Exception(resData['error'] ?? 'Không thể cập nhật PIN');
+        throw Exception(resData['error'] ?? 'Không thể cập nhật Mã PIN');
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi: ${e.toString().replaceAll('Exception: ', '')}'), backgroundColor: Colors.red),
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(content: Text('Lỗi: ${e.toString().replaceAll('Exception: ', '')}'), backgroundColor: Colors.redAccent),
       );
     } finally {
       if (mounted) setState(() => _isLoadingPin = false);
@@ -128,6 +138,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showForgotPinDialog() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final resetPasswordController = TextEditingController();
     final resetNewPinController = TextEditingController();
     final resetFormKey = GlobalKey<FormState>();
@@ -135,28 +146,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF16213E),
-        title: const Text('Đặt lại Mã PIN (Quên PIN)', style: TextStyle(color: Colors.white)),
+        backgroundColor: themeProvider.dialogBgColor,
+        title: Text('Đặt lại Mã PIN (Quên PIN)', style: TextStyle(color: themeProvider.textColor)),
         content: Form(
           key: resetFormKey,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'Nhập mật khẩu tài khoản để xác thực và tạo Mã PIN mới:',
-                style: TextStyle(color: Colors.white70, fontSize: 13),
+                style: TextStyle(color: themeProvider.subtitleColor, fontSize: 13),
               ),
               const SizedBox(height: 14),
               TextFormField(
                 controller: resetPasswordController,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: themeProvider.textColor),
                 obscureText: true,
                 autocorrect: false,
                 enableSuggestions: false,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Mật khẩu đăng nhập',
-                  labelStyle: TextStyle(color: Colors.white70),
-                  border: OutlineInputBorder(),
+                  labelStyle: TextStyle(color: themeProvider.subtitleColor),
+                  border: const OutlineInputBorder(),
                 ),
                 validator: (v) => (v?.trim().isEmpty ?? true) ? 'Vui lòng nhập mật khẩu' : null,
               ),
@@ -165,12 +176,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 controller: resetNewPinController,
                 keyboardType: TextInputType.number,
                 maxLength: 6,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: themeProvider.textColor),
                 obscureText: true,
-                decoration: const InputDecoration(
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                ],
+                decoration: InputDecoration(
                   labelText: 'Mã PIN mới (bắt buộc 6 chữ số)',
-                  labelStyle: TextStyle(color: Colors.white70),
-                  border: OutlineInputBorder(),
+                  labelStyle: TextStyle(color: themeProvider.subtitleColor),
+                  border: const OutlineInputBorder(),
                 ),
                 validator: (v) => (v?.length ?? 0) != 6 || !RegExp(r'^\d+$').hasMatch(v ?? '') ? 'Mã PIN phải gồm đúng 6 chữ số' : null,
               ),
@@ -182,7 +196,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onPressed: () {
               if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
             },
-            child: const Text('Hủy', style: TextStyle(color: Colors.white54)),
+            child: TextStyle(color: themeProvider.subtitleColor) == TextStyle(color: Colors.white70)
+                ? const Text('Hủy', style: TextStyle(color: Colors.white54))
+                : const Text('Hủy', style: TextStyle(color: Colors.black54)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -201,27 +217,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   );
                   if (response.statusCode == 200) {
                     if (navigator.canPop()) navigator.pop();
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      messenger.showSnackBar(
-                        const SnackBar(content: Text('Đặt lại Mã PIN thành công!'), backgroundColor: Colors.green),
-                      );
-                    });
+                    messenger.hideCurrentSnackBar();
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('Đặt lại Mã PIN thành công!'), backgroundColor: Colors.green),
+                    );
                     await authProvider.fetchUserProfile();
                   } else {
                     final resData = jsonDecode(response.body);
+                    messenger.hideCurrentSnackBar();
                     messenger.showSnackBar(
-                      SnackBar(content: Text(resData['error'] ?? 'Đặt lại PIN thất bại'), backgroundColor: Colors.red),
+                      SnackBar(content: Text(resData['error'] ?? 'Đặt lại Mã PIN thất bại'), backgroundColor: Colors.redAccent),
                     );
                   }
                 } catch (e) {
+                  messenger.hideCurrentSnackBar();
                   messenger.showSnackBar(
-                    SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
+                    SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.redAccent),
                   );
                 }
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent),
-            child: const Text('Xác nhận đặt lại PIN', style: TextStyle(color: Colors.black)),
+            child: const Text('Xác Nhận Đặt Lại PIN', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -229,27 +246,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showEditProfileDialog(AuthProvider authProvider) {
-    final user = authProvider.user ?? {};
-    final fullNameController = TextEditingController(text: user['fullName']?.toString() ?? '');
-    final usernameController = TextEditingController(text: user['username']?.toString() ?? '');
-    final phoneController = TextEditingController(text: user['phone']?.toString() ?? '');
-    final addressController = TextEditingController(text: user['address']?.toString() ?? '');
-    final dobController = TextEditingController(text: user['dob']?.toString() ?? '');
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final user = authProvider.user;
+    final fullNameController = TextEditingController(text: user?['fullName']?.toString() ?? '');
+    final usernameController = TextEditingController(text: user?['username']?.toString() ?? '');
+    final phoneController = TextEditingController(text: user?['phone']?.toString() ?? '');
+    final addressController = TextEditingController(text: user?['address']?.toString() ?? '');
+    final dobController = TextEditingController(text: user?['dob']?.toString() ?? '');
     final formKey = GlobalKey<FormState>();
-
     bool isSubmitting = false;
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (dialogCtx, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF16213E),
+          backgroundColor: themeProvider.dialogBgColor,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.edit_note_rounded, color: Colors.cyanAccent, size: 28),
-              SizedBox(width: 8),
-              Text('Cập Nhật Thông Tin', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              const Icon(Icons.edit_note_rounded, color: Colors.cyanAccent, size: 28),
+              const SizedBox(width: 8),
+              Text('Cập Nhật Thông Tin', style: TextStyle(color: themeProvider.textColor, fontSize: 18, fontWeight: FontWeight.bold)),
             ],
           ),
           content: Form(
@@ -260,40 +277,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   TextFormField(
                     controller: fullNameController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
+                    style: TextStyle(color: themeProvider.textColor),
+                    decoration: InputDecoration(
                       labelText: 'Họ và tên',
-                      labelStyle: TextStyle(color: Colors.white70),
-                      border: OutlineInputBorder(),
+                      labelStyle: TextStyle(color: themeProvider.subtitleColor),
+                      border: const OutlineInputBorder(),
                     ),
-                    validator: (v) => (v?.trim().isEmpty ?? true) ? 'Vui lòng nhập họ và tên' : null,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Vui lòng nhập họ và tên';
+                      final clean = v.trim();
+                      if (clean.length < 2 || clean.length > 50) return 'Họ và tên phải từ 2 đến 50 ký tự';
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: usernameController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
+                    style: TextStyle(color: themeProvider.textColor),
+                    decoration: InputDecoration(
                       labelText: 'Tên người dùng (Username)',
-                      labelStyle: TextStyle(color: Colors.white70),
-                      border: OutlineInputBorder(),
+                      labelStyle: TextStyle(color: themeProvider.subtitleColor),
+                      border: const OutlineInputBorder(),
                     ),
-                    validator: (v) => (v?.trim().isEmpty ?? true) ? 'Vui lòng nhập username' : null,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Vui lòng nhập username';
+                      final clean = v.trim();
+                      if (clean.length < 3 || clean.length > 30) return 'Username phải từ 3 đến 30 ký tự';
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: phoneController,
                     keyboardType: TextInputType.phone,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
-                      labelText: 'Số điện thoại (10 chữ số)',
-                      labelStyle: TextStyle(color: Colors.white70),
-                      border: OutlineInputBorder(),
+                    style: TextStyle(color: themeProvider.textColor),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[\d+]')),
+                    ],
+                    decoration: InputDecoration(
+                      labelText: 'Số điện thoại (10 chữ số, vd: 0912345678)',
+                      labelStyle: TextStyle(color: themeProvider.subtitleColor),
+                      border: const OutlineInputBorder(),
                     ),
                     validator: (v) {
                       if (v == null || v.trim().isEmpty) return null;
                       final clean = v.trim();
                       if (!RegExp(r'^(\+84|0)[35789][0-9]{8}$').hasMatch(clean)) {
-                        return 'Số ĐT không hợp lệ (ví dụ: 0912345678)';
+                        return 'Số điện thoại không hợp lệ (gồm 10 chữ số bắt đầu bằng 03, 05, 07, 08, 09)';
                       }
                       return null;
                     },
@@ -301,22 +331,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: addressController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
+                    style: TextStyle(color: themeProvider.textColor),
+                    decoration: InputDecoration(
                       labelText: 'Địa chỉ',
-                      labelStyle: TextStyle(color: Colors.white70),
-                      border: OutlineInputBorder(),
+                      labelStyle: TextStyle(color: themeProvider.subtitleColor),
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: dobController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
+                    readOnly: true,
+                    style: TextStyle(color: themeProvider.textColor),
+                    decoration: InputDecoration(
                       labelText: 'Ngày sinh (DD/MM/YYYY)',
-                      labelStyle: TextStyle(color: Colors.white70),
-                      border: OutlineInputBorder(),
+                      labelStyle: TextStyle(color: themeProvider.subtitleColor),
+                      border: const OutlineInputBorder(),
+                      suffixIcon: const Icon(Icons.calendar_today, color: Colors.cyanAccent),
                     ),
+                    onTap: () async {
+                      final now = DateTime.now();
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime(2000, 1, 1),
+                        firstDate: DateTime(1920),
+                        lastDate: now,
+                      );
+                      if (picked != null) {
+                        final day = picked.day.toString().padLeft(2, '0');
+                        final month = picked.month.toString().padLeft(2, '0');
+                        final year = picked.year;
+                        dobController.text = '$day/$month/$year';
+                      }
+                    },
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return null;
+                      if (!RegExp(r'^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$').hasMatch(v.trim())) {
+                        return 'Ngày sinh không hợp lệ (định dạng DD/MM/YYYY)';
+                      }
+                      return null;
+                    },
                   ),
                 ],
               ),
@@ -325,7 +379,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Hủy', style: TextStyle(color: Colors.white54)),
+              child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
             ),
             ElevatedButton(
               onPressed: isSubmitting
@@ -354,6 +408,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             await authProvider.fetchUserProfile();
                             final currentCtx = navigatorKey.currentContext;
                             if (currentCtx != null && currentCtx.mounted) {
+                              ScaffoldMessenger.of(currentCtx).hideCurrentSnackBar();
                               ScaffoldMessenger.of(currentCtx).showSnackBar(
                                 const SnackBar(content: Text('Cập nhật thông tin cá nhân thành công!'), backgroundColor: Colors.green),
                               );
@@ -362,16 +417,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             final resData = jsonDecode(response.body);
                             final currentCtx = navigatorKey.currentContext;
                             if (currentCtx != null && currentCtx.mounted) {
+                              ScaffoldMessenger.of(currentCtx).hideCurrentSnackBar();
                               ScaffoldMessenger.of(currentCtx).showSnackBar(
-                                SnackBar(content: Text(resData['error'] ?? 'Cập nhật thất bại'), backgroundColor: Colors.red),
+                                SnackBar(content: Text(resData['error'] ?? 'Cập nhật thất bại. Vui lòng kiểm tra lại!'), backgroundColor: Colors.redAccent),
                               );
                             }
                           }
                         } catch (e) {
                           final currentCtx = navigatorKey.currentContext;
                           if (currentCtx != null && currentCtx.mounted) {
+                            ScaffoldMessenger.of(currentCtx).hideCurrentSnackBar();
                             ScaffoldMessenger.of(currentCtx).showSnackBar(
-                              SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
+                              SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.redAccent),
                             );
                           }
                         } finally {
@@ -382,7 +439,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black),
               child: isSubmitting
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
-                  : const Text('Lưu Thay Đổi'),
+                  : const Text('Lưu Thay Đổi', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -394,15 +451,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final localeProvider = Provider.of<LocaleProvider>(context);
     final authProvider = Provider.of<AuthProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
-        ),
-      ),
+      color: themeProvider.backgroundColor,
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -412,16 +464,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF2C3E50), Color(0xFF000000)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: themeProvider.cardColor,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.3)),
+                border: Border.all(color: themeProvider.cardBorderColor),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 12,
                     offset: const Offset(0, 6),
                   ),
@@ -435,7 +483,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: const LinearGradient(colors: [Colors.cyanAccent, Colors.purpleAccent]),
-                      border: Border.all(color: Colors.white, width: 2),
+                      border: Border.all(color: themeProvider.cardBorderColor, width: 2),
                     ),
                     child: const Icon(Icons.person, color: Colors.black, size: 36),
                   ),
@@ -448,18 +496,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           (authProvider.user?['fullName']?.toString().isNotEmpty == true)
                               ? authProvider.user!['fullName'].toString()
                               : (authProvider.user?['username'] ?? 'Người Dùng NFC'),
-                          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: themeProvider.textColor, fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           authProvider.user?['email'] ?? 'user@nfcwallet.com',
-                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                          style: TextStyle(color: themeProvider.subtitleColor, fontSize: 13),
                         ),
                         if (authProvider.user?['phone']?.toString().isNotEmpty == true) ...[
                           const SizedBox(height: 2),
                           Text(
                             'SĐT: ${authProvider.user!['phone']}',
-                            style: const TextStyle(color: Colors.cyanAccent, fontSize: 12),
+                            style: const TextStyle(color: Colors.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ],
@@ -479,14 +527,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // Header Security Section
             Text(
               localeProvider.getText('account_security'),
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: themeProvider.textColor),
             ),
             const SizedBox(height: 16),
 
             // Card 1: Change Password
             Card(
-              color: Colors.white.withValues(alpha: 0.05),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              color: themeProvider.cardColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: themeProvider.cardBorderColor)),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Form(
@@ -500,17 +548,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           const SizedBox(width: 8),
                           Text(
                             localeProvider.getText('update_password'),
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                            style: TextStyle(color: themeProvider.textColor, fontWeight: FontWeight.bold, fontSize: 16),
                           ),
                         ],
                       ),
                       const SizedBox(height: 14),
                       TextFormField(
                         controller: _passwordController,
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: themeProvider.textColor),
                         decoration: InputDecoration(
                           labelText: localeProvider.getText('current_password'),
-                          labelStyle: const TextStyle(color: Colors.white70),
+                          labelStyle: TextStyle(color: themeProvider.subtitleColor),
                           border: const OutlineInputBorder(),
                         ),
                         obscureText: true,
@@ -521,10 +569,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _newPasswordController,
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: themeProvider.textColor),
                         decoration: InputDecoration(
                           labelText: localeProvider.getText('new_password'),
-                          labelStyle: const TextStyle(color: Colors.white70),
+                          labelStyle: TextStyle(color: themeProvider.subtitleColor),
                           border: const OutlineInputBorder(),
                         ),
                         obscureText: true,
@@ -540,7 +588,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent),
                           child: _isLoadingPassword
                               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                              : Text(localeProvider.getText('update_password'), style: const TextStyle(color: Colors.white)),
+                              : Text(localeProvider.getText('update_password'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         ),
                       ),
                     ],
@@ -553,8 +601,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             // Card 2: Manage PIN (Change & Forgot PIN)
             Card(
-              color: Colors.white.withValues(alpha: 0.05),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              color: themeProvider.cardColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: themeProvider.cardBorderColor)),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Form(
@@ -573,7 +621,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 (authProvider.user?['hasPin'] == true || (authProvider.user?['hasPin'] != false && authProvider.user?['pin'] != null))
                                     ? localeProvider.getText('change_pin')
                                     : 'Tạo Mã PIN Bảo Mật',
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                style: TextStyle(color: themeProvider.textColor, fontWeight: FontWeight.bold, fontSize: 16),
                               ),
                             ],
                           ),
@@ -593,10 +641,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           controller: _currentPinController,
                           keyboardType: TextInputType.number,
                           maxLength: 6,
-                          style: const TextStyle(color: Colors.white),
+                          style: TextStyle(color: themeProvider.textColor),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
                           decoration: InputDecoration(
                             labelText: localeProvider.getText('current_pin'),
-                            labelStyle: const TextStyle(color: Colors.white70),
+                            labelStyle: TextStyle(color: themeProvider.subtitleColor),
                             border: const OutlineInputBorder(),
                           ),
                           obscureText: true,
@@ -608,12 +659,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         controller: _newPinController,
                         keyboardType: TextInputType.number,
                         maxLength: 6,
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: themeProvider.textColor),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
                         decoration: InputDecoration(
                           labelText: (authProvider.user?['hasPin'] == true || (authProvider.user?['hasPin'] != false && authProvider.user?['pin'] != null))
                               ? localeProvider.getText('new_pin')
                               : 'Mã PIN 6 chữ số',
-                          labelStyle: const TextStyle(color: Colors.white70),
+                          labelStyle: TextStyle(color: themeProvider.subtitleColor),
                           border: const OutlineInputBorder(),
                         ),
                         obscureText: true,
@@ -631,7 +685,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   (authProvider.user?['hasPin'] == true || (authProvider.user?['hasPin'] != false && authProvider.user?['pin'] != null))
                                       ? localeProvider.getText('update_pin')
                                       : 'Tạo Mã PIN',
-                                  style: const TextStyle(color: Colors.white),
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                                 ),
                         ),
                       ),
@@ -646,24 +700,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // Preferences Section
             Text(
               localeProvider.getText('preferences'),
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: themeProvider.textColor),
             ),
             const SizedBox(height: 10),
             SwitchListTile(
-              title: Text(localeProvider.getText('enable_notifications'), style: const TextStyle(color: Colors.white)),
+              title: Text(localeProvider.getText('enable_notifications'), style: TextStyle(color: themeProvider.textColor)),
               value: _notificationsEnabled,
               onChanged: (val) => setState(() => _notificationsEnabled = val),
             ),
             DropdownButtonFormField<String>(
               initialValue: localeProvider.isVietnamese ? 'vi' : 'en',
-              dropdownColor: const Color(0xFF16213E),
+              dropdownColor: themeProvider.dialogBgColor,
               decoration: InputDecoration(
                 labelText: localeProvider.getText('language'),
-                labelStyle: const TextStyle(color: Colors.white70),
+                labelStyle: TextStyle(color: themeProvider.subtitleColor),
               ),
-              items: const [
-                DropdownMenuItem(value: 'vi', child: Text('Tiếng Việt', style: TextStyle(color: Colors.white))),
-                DropdownMenuItem(value: 'en', child: Text('English', style: TextStyle(color: Colors.white))),
+              items: [
+                DropdownMenuItem(value: 'vi', child: Text('Tiếng Việt', style: TextStyle(color: themeProvider.textColor))),
+                DropdownMenuItem(value: 'en', child: Text('English', style: TextStyle(color: themeProvider.textColor))),
               ],
               onChanged: (val) {
                 if (val != null) {
