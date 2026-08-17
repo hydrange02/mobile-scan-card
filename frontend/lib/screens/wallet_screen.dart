@@ -65,16 +65,18 @@ class _WalletScreenState extends State<WalletScreen> {
         headers: authProvider.authHeaders,
       );
       if (response.statusCode == 200 && mounted) {
+        final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
         HapticService.successFeedback();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã đặt làm thẻ mặc định!'), backgroundColor: Colors.green),
+          SnackBar(content: Text(localeProvider.getText('set_default_success')), backgroundColor: Colors.green),
         );
         _fetchCards();
       }
     } catch (e) {
       if (mounted) {
+        final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('${localeProvider.getText('error_prefix')}: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -88,16 +90,18 @@ class _WalletScreenState extends State<WalletScreen> {
         headers: authProvider.authHeaders,
       );
       if ((response.statusCode == 200 || response.statusCode == 204) && mounted) {
+        final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
         HapticService.successFeedback();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã xóa thẻ khỏi ví thành công')),
+          SnackBar(content: Text(localeProvider.getText('card_deleted_success'))),
         );
         _fetchCards();
       }
     } catch (e) {
       if (mounted) {
+        final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi khi xóa thẻ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('${localeProvider.getText('error_prefix')}: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -116,10 +120,11 @@ class _WalletScreenState extends State<WalletScreen> {
         }),
       );
       if (response.statusCode == 201 && mounted) {
+        final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
         HapticService.successFeedback();
         messenger.hideCurrentSnackBar();
         messenger.showSnackBar(
-          const SnackBar(content: Text('Thêm thẻ mới thành công!'), backgroundColor: Colors.green),
+          SnackBar(content: Text(localeProvider.getText('card_added_success')), backgroundColor: Colors.green),
         );
         _fetchCards();
       } else {
@@ -128,7 +133,7 @@ class _WalletScreenState extends State<WalletScreen> {
         messenger.hideCurrentSnackBar();
         messenger.showSnackBar(
           SnackBar(
-            content: Text(resData['error'] ?? 'Không thể thêm thẻ mới. Vui lòng thử lại!'),
+            content: Text(resData['error'] ?? 'Failed to add card'),
             backgroundColor: Colors.redAccent,
             duration: const Duration(seconds: 4),
           ),
@@ -136,16 +141,18 @@ class _WalletScreenState extends State<WalletScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
         messenger.hideCurrentSnackBar();
         messenger.showSnackBar(
-          SnackBar(content: Text('Lỗi kết nối khi thêm thẻ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('${localeProvider.getText('error_prefix')}: $e'), backgroundColor: Colors.red),
         );
       }
     }
   }
 
-  void _scanNfcCard() async {
+  Future<void> _scanNfcCard() async {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
     Navigator.pop(context); // Close selection modal
     
     // Show scanning dialog
@@ -154,6 +161,7 @@ class _WalletScreenState extends State<WalletScreen> {
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         backgroundColor: themeProvider.dialogBgColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -161,12 +169,12 @@ class _WalletScreenState extends State<WalletScreen> {
             const Icon(Icons.nfc, size: 60, color: Colors.cyanAccent),
             const SizedBox(height: 16),
             Text(
-              'Đang quét thẻ NFC...',
+              localeProvider.getText('scanning_nfc'),
               style: TextStyle(color: themeProvider.textColor, fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 8),
             Text(
-              'Vui lòng đưa thẻ NFC chạm vào lưng thiết bị',
+              localeProvider.getText('hold_nfc_near'),
               textAlign: TextAlign.center,
               style: TextStyle(color: themeProvider.subtitleColor, fontSize: 12),
             ),
@@ -184,7 +192,7 @@ class _WalletScreenState extends State<WalletScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Thiết bị không hỗ trợ NFC hoặc chưa bật NFC (${result['error']})'),
+            content: Text('${localeProvider.getText('nfc_not_supported')} (${result['error']})'),
             backgroundColor: Colors.redAccent,
             duration: const Duration(seconds: 4),
           ),
@@ -196,12 +204,14 @@ class _WalletScreenState extends State<WalletScreen> {
       final String suffix = cleanTag.length >= 4
           ? cleanTag.substring(cleanTag.length - 4).toUpperCase()
           : cleanTag.padLeft(4, '0').toUpperCase();
-      _addCardApi('Thẻ NFC ($suffix)', '411122223333$suffix');
+      final String cardDefaultName = localeProvider.isVietnamese ? 'Thẻ NFC ($suffix)' : 'NFC Card ($suffix)';
+      _addCardApi(cardDefaultName, '411122223333$suffix');
     }
   }
 
   void _showManualInputDialog() {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
     Navigator.pop(context); // Close selection modal
 
     final formKey = GlobalKey<FormState>();
@@ -218,31 +228,31 @@ class _WalletScreenState extends State<WalletScreen> {
           void updateBrand(String val) {
             final clean = val.replaceAll(RegExp(r'\s+'), '');
             String brand = '';
-            Color col = Colors.cyanAccent;
+            Color color = Colors.cyanAccent;
 
             if (clean.startsWith('4')) {
               brand = 'VISA';
-              col = Colors.blueAccent;
+              color = Colors.blueAccent;
             } else if (RegExp(r'^(5[1-5]|2[2-7])').hasMatch(clean)) {
               brand = 'MASTERCARD';
-              col = Colors.orangeAccent;
+              color = Colors.orangeAccent;
             } else if (clean.startsWith('9704')) {
-              brand = 'NAPAS (ATM)';
-              col = Colors.greenAccent;
+              brand = 'NAPAS';
+              color = Colors.greenAccent;
             } else if (RegExp(r'^(34|37)').hasMatch(clean)) {
               brand = 'AMEX';
-              col = Colors.cyanAccent;
+              color = Colors.lightBlueAccent;
             } else if (RegExp(r'^35').hasMatch(clean)) {
               brand = 'JCB';
-              col = Colors.purpleAccent;
+              color = Colors.redAccent;
             } else if (RegExp(r'^(62|81)').hasMatch(clean)) {
               brand = 'UNIONPAY';
-              col = Colors.tealAccent;
+              color = Colors.tealAccent;
             }
 
             setDialogState(() {
               detectedBrand = brand;
-              brandColor = col;
+              brandColor = color;
             });
           }
 
@@ -253,7 +263,7 @@ class _WalletScreenState extends State<WalletScreen> {
               children: [
                 const Icon(Icons.credit_card_rounded, color: Colors.cyanAccent, size: 28),
                 const SizedBox(width: 8),
-                Text('Nhập Thông Tin Thẻ Thủ Công', style: TextStyle(color: themeProvider.textColor, fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(localeProvider.getText('manual_entry_title'), style: TextStyle(color: themeProvider.textColor, fontSize: 18, fontWeight: FontWeight.bold)),
               ],
             ),
             content: Form(
@@ -269,8 +279,8 @@ class _WalletScreenState extends State<WalletScreen> {
                     autocorrect: true,
                     style: TextStyle(color: themeProvider.textColor),
                     decoration: InputDecoration(
-                      labelText: 'Tên gợi nhớ của thẻ (Tùy chọn)',
-                      hintText: 'Ví dụ: Ví Tiêu Dùng, Thẻ Lương, Visa Gold...',
+                      labelText: localeProvider.getText('card_nickname_label'),
+                      hintText: localeProvider.getText('card_nickname_hint'),
                       hintStyle: TextStyle(color: themeProvider.subtitleColor, fontSize: 11),
                       labelStyle: TextStyle(color: themeProvider.subtitleColor),
                       border: const OutlineInputBorder(),
@@ -278,9 +288,9 @@ class _WalletScreenState extends State<WalletScreen> {
                     validator: (v) {
                       if (v == null || v.trim().isEmpty) return null;
                       final clean = v.trim();
-                      if (clean.length < 2 || clean.length > 50) return 'Tên thẻ phải từ 2 đến 50 ký tự';
+                      if (clean.length < 2 || clean.length > 50) return '2 - 50 chars';
                       if (RegExp(r'[<>{}]').hasMatch(clean)) {
-                        return 'Tên thẻ chứa ký tự không hợp lệ';
+                        return 'Invalid characters';
                       }
                       return null;
                     },
@@ -293,9 +303,9 @@ class _WalletScreenState extends State<WalletScreen> {
                     maxLength: 19,
                     onChanged: updateBrand,
                     decoration: InputDecoration(
-                      labelText: 'Số thẻ ngân hàng (15-19 chữ số)',
+                      labelText: localeProvider.getText('card_number_label'),
                       labelStyle: TextStyle(color: themeProvider.subtitleColor),
-                      hintText: 'Ví dụ: 4111222233334444 hoặc 9704123456789012',
+                      hintText: localeProvider.getText('card_number_hint'),
                       hintStyle: TextStyle(color: themeProvider.subtitleColor, fontSize: 11),
                       border: const OutlineInputBorder(),
                       suffixIcon: detectedBrand.isNotEmpty
@@ -315,9 +325,9 @@ class _WalletScreenState extends State<WalletScreen> {
                     ),
                     validator: (v) {
                       final clean = (v ?? '').replaceAll(RegExp(r'\s+'), '');
-                      if (clean.isEmpty) return 'Vui lòng nhập số thẻ ngân hàng';
-                      if (!RegExp(r'^\d+$').hasMatch(clean)) return 'Số thẻ chỉ được chứa chữ số';
-                      if (clean.length < 15 || clean.length > 19) return 'Số thẻ phải từ 15 đến 19 chữ số (chuẩn 16 số)';
+                      if (clean.isEmpty) return '15 - 19 digits';
+                      if (!RegExp(r'^\d+$').hasMatch(clean)) return 'Digits only';
+                      if (clean.length < 15 || clean.length > 19) return '15 - 19 digits';
 
                       final isValidBin = clean.startsWith('4') ||
                           RegExp(r'^(5[1-5]|2[2-7])').hasMatch(clean) ||
@@ -327,7 +337,7 @@ class _WalletScreenState extends State<WalletScreen> {
                           RegExp(r'^(62|81)').hasMatch(clean);
 
                       if (!isValidBin) {
-                        return 'Đầu số (BIN) không hợp lệ (Visa: 4, Mastercard: 5/2, Napas: 9704, Amex: 34/37, JCB: 35)';
+                        return 'Invalid card BIN';
                       }
                       return null;
                     },
@@ -339,7 +349,7 @@ class _WalletScreenState extends State<WalletScreen> {
                         const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 16),
                         const SizedBox(width: 6),
                         Text(
-                          'Tự động nhận diện mạng thẻ: $detectedBrand',
+                          '${localeProvider.getText('auto_detect_brand')} $detectedBrand',
                           style: TextStyle(color: brandColor, fontSize: 12, fontWeight: FontWeight.bold),
                         ),
                       ],
@@ -351,7 +361,7 @@ class _WalletScreenState extends State<WalletScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: Text('Hủy', style: TextStyle(color: themeProvider.subtitleColor)),
+                child: Text(localeProvider.getText('cancel'), style: TextStyle(color: themeProvider.subtitleColor)),
               ),
               ElevatedButton(
                 onPressed: () {
@@ -362,7 +372,7 @@ class _WalletScreenState extends State<WalletScreen> {
                   }
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black),
-                child: const Text('Thêm thẻ', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: Text(localeProvider.getText('add_card_btn'), style: const TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           );
@@ -373,6 +383,7 @@ class _WalletScreenState extends State<WalletScreen> {
 
   void _showAddCardOptions() {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
     HapticService.selectionFeedback();
     showModalBottomSheet(
       context: context,
@@ -387,7 +398,7 @@ class _WalletScreenState extends State<WalletScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Chọn phương thức thêm thẻ',
+              localeProvider.getText('choose_add_method'),
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: themeProvider.textColor),
             ),
             const SizedBox(height: 20),
@@ -397,8 +408,8 @@ class _WalletScreenState extends State<WalletScreen> {
                 decoration: BoxDecoration(color: Colors.cyanAccent.withValues(alpha: 0.15), shape: BoxShape.circle),
                 child: const Icon(Icons.nfc, color: Colors.cyanAccent),
               ),
-              title: Text('Quét thẻ bằng NFC', style: TextStyle(color: themeProvider.textColor, fontWeight: FontWeight.bold)),
-              subtitle: Text('Chạm thẻ NFC vào thiết bị để tự động đọc', style: TextStyle(color: themeProvider.subtitleColor, fontSize: 12)),
+              title: Text(localeProvider.getText('scan_nfc_title'), style: TextStyle(color: themeProvider.textColor, fontWeight: FontWeight.bold)),
+              subtitle: Text(localeProvider.getText('scan_nfc_sub'), style: TextStyle(color: themeProvider.subtitleColor, fontSize: 12)),
               onTap: _scanNfcCard,
             ),
             const Divider(color: Colors.white12),
@@ -408,8 +419,8 @@ class _WalletScreenState extends State<WalletScreen> {
                 decoration: BoxDecoration(color: Colors.purpleAccent.withValues(alpha: 0.15), shape: BoxShape.circle),
                 child: const Icon(Icons.edit_note, color: Colors.purpleAccent),
               ),
-              title: Text('Nhập thông tin thủ công', style: TextStyle(color: themeProvider.textColor, fontWeight: FontWeight.bold)),
-              subtitle: Text('Tự nhập Tên thẻ và Số thẻ ngân hàng', style: TextStyle(color: themeProvider.subtitleColor, fontSize: 12)),
+              title: Text(localeProvider.getText('manual_entry_title'), style: TextStyle(color: themeProvider.textColor, fontWeight: FontWeight.bold)),
+              subtitle: Text(localeProvider.getText('manual_entry_sub'), style: TextStyle(color: themeProvider.subtitleColor, fontSize: 12)),
               onTap: _showManualInputDialog,
             ),
             const SizedBox(height: 10),
@@ -438,11 +449,11 @@ class _WalletScreenState extends State<WalletScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Ví Điện Tử',
+                          localeProvider.getText('wallet_management'),
                           style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: themeProvider.textColor),
                         ),
                         Text(
-                          'Quản lý ${_cards.length} thẻ trong ví',
+                          localeProvider.isVietnamese ? 'Quản lý ${_cards.length} thẻ trong ví' : 'Managing ${_cards.length} cards in wallet',
                           style: TextStyle(color: themeProvider.subtitleColor, fontSize: 13),
                         ),
                       ],
@@ -450,7 +461,7 @@ class _WalletScreenState extends State<WalletScreen> {
                     ElevatedButton.icon(
                       onPressed: _showAddCardOptions,
                       icon: const Icon(Icons.add, size: 18),
-                      label: const Text('THÊM THẺ MỚI'),
+                      label: Text(localeProvider.getText('add_new_card')),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: themeProvider.primaryColor,
                         foregroundColor: Colors.white,
@@ -480,12 +491,12 @@ class _WalletScreenState extends State<WalletScreen> {
                         Icon(Icons.wallet, size: 64, color: themeProvider.primaryColor),
                         const SizedBox(height: 16),
                         Text(
-                          'Chưa có thẻ trong ví',
+                          localeProvider.getText('no_cards_in_wallet'),
                           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: themeProvider.textColor),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Thêm thẻ ngay để bắt đầu trải nghiệm thanh toán NFC 1-Chạm nhanh chóng và an toàn!',
+                          localeProvider.getText('add_card_now_sub'),
                           textAlign: TextAlign.center,
                           style: TextStyle(color: themeProvider.subtitleColor, fontSize: 13),
                         ),
@@ -493,7 +504,7 @@ class _WalletScreenState extends State<WalletScreen> {
                         ElevatedButton.icon(
                           onPressed: _showAddCardOptions,
                           icon: const Icon(Icons.add_card),
-                          label: const Text('Thêm thẻ ngay'),
+                          label: Text(localeProvider.getText('add_card_now')),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: themeProvider.primaryColor,
                             foregroundColor: Colors.white,
@@ -567,9 +578,9 @@ class _WalletScreenState extends State<WalletScreen> {
                                             borderRadius: BorderRadius.circular(10),
                                             border: Border.all(color: Colors.amber, width: 0.8),
                                           ),
-                                          child: const Text(
-                                            'MẶC ĐỊNH',
-                                            style: TextStyle(color: Colors.amber, fontSize: 10, fontWeight: FontWeight.bold),
+                                          child: Text(
+                                            localeProvider.getText('default_card').toUpperCase(),
+                                            style: const TextStyle(color: Colors.amber, fontSize: 10, fontWeight: FontWeight.bold),
                                           ),
                                         ),
                                       ],
@@ -582,9 +593,9 @@ class _WalletScreenState extends State<WalletScreen> {
                                             borderRadius: BorderRadius.circular(10),
                                             border: Border.all(color: Colors.redAccent, width: 0.8),
                                           ),
-                                          child: const Text(
-                                            'ĐÃ HẾT HẠN',
-                                            style: TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold),
+                                          child: Text(
+                                            localeProvider.getText('expired'),
+                                            style: const TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold),
                                           ),
                                         ),
                                       ],
@@ -595,18 +606,18 @@ class _WalletScreenState extends State<WalletScreen> {
                                       if (!isDefault)
                                         IconButton(
                                           icon: Icon(Icons.star_border, color: isExpired ? Colors.grey : Colors.amber),
-                                          tooltip: isExpired ? 'Không thể đặt thẻ hết hạn làm mặc định' : 'Đặt làm mặc định',
+                                          tooltip: isExpired ? localeProvider.getText('cannot_set_expired_default') : localeProvider.getText('set_default_tooltip'),
                                           onPressed: isExpired
                                               ? () {
                                                   ScaffoldMessenger.of(context).showSnackBar(
-                                                    const SnackBar(content: Text('Không thể chọn thẻ đã hết hạn làm thẻ mặc định! Vui lòng cập nhật hạn thẻ trước.')),
+                                                    SnackBar(content: Text(localeProvider.getText('cannot_set_expired_default'))),
                                                   );
                                                 }
                                               : () => _setDefaultCard(card['id']),
                                         ),
                                       IconButton(
                                         icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                                        tooltip: 'Xóa thẻ khỏi ví',
+                                        tooltip: localeProvider.getText('delete_card_tooltip'),
                                         onPressed: () => _deleteCard(card['id']),
                                       ),
                                     ],
@@ -618,7 +629,7 @@ class _WalletScreenState extends State<WalletScreen> {
                                 fit: BoxFit.scaleDown,
                                 alignment: Alignment.centerLeft,
                                 child: Text(
-                                  'Số dư: ${localeProvider.formatAmount(balance)}',
+                                  '${localeProvider.getText('balance_prefix')} ${localeProvider.formatAmount(balance)}',
                                   style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500),
                                 ),
                               ),

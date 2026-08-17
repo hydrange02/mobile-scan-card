@@ -505,7 +505,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
 
                 // 2. Details List Group
                 Text(
-                  'Thông Tin Chi Tiết Thẻ',
+                  localeProvider.isVietnamese ? 'Thông Tin Chi Tiết Thẻ' : 'Card Information Details',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: themeProvider.textColor),
                 ),
                 const SizedBox(height: 12),
@@ -521,17 +521,17 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                   ),
                   child: Column(
                     children: [
-                      _buildInfoTile(Icons.person, 'Chủ sở hữu', holder, themeProvider),
+                      _buildInfoTile(Icons.person, localeProvider.isVietnamese ? 'Chủ sở hữu' : 'Cardholder', holder, themeProvider),
                       Divider(color: themeProvider.cardBorderColor, height: 1),
-                      _buildInfoTile(Icons.credit_card, 'Số thẻ đầy đủ', cardNumber, themeProvider),
+                      _buildInfoTile(Icons.credit_card, localeProvider.isVietnamese ? 'Số thẻ đầy đủ' : 'Full Card Number', cardNumber, themeProvider),
                       Divider(color: themeProvider.cardBorderColor, height: 1),
-                      _buildInfoTile(Icons.calendar_today, 'Ngày hết hạn', expiry, themeProvider),
+                      _buildInfoTile(Icons.calendar_today, localeProvider.isVietnamese ? 'Ngày hết hạn' : 'Expiry Date', expiry, themeProvider),
                       Divider(color: themeProvider.cardBorderColor, height: 1),
-                      _buildInfoTile(Icons.phone, 'Số ĐT liên kết', phone, themeProvider),
+                      _buildInfoTile(Icons.phone, localeProvider.isVietnamese ? 'Số ĐT liên kết' : 'Linked Phone', phone, themeProvider),
                       Divider(color: themeProvider.cardBorderColor, height: 1),
                       _buildInfoTile(
                         Icons.account_balance_wallet,
-                        'Số dư khả dụng',
+                        localeProvider.getText('available_balance'),
                         localeProvider.formatAmount(balance),
                         themeProvider,
                         valueColor: Colors.green,
@@ -539,8 +539,12 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                       Divider(color: themeProvider.cardBorderColor, height: 1),
                       _buildInfoTile(
                         Icons.star,
-                        'Trạng thái thẻ',
-                        isExpired ? 'Đã hết hạn (Cần gia hạn)' : (isDefault ? 'Thẻ mặc định' : 'Thẻ phụ'),
+                        localeProvider.getText('status'),
+                        isExpired
+                            ? (localeProvider.isVietnamese ? 'Đã hết hạn (Cần gia hạn)' : 'Expired (Renewal Needed)')
+                            : (isDefault
+                                ? (localeProvider.isVietnamese ? 'Thẻ mặc định' : 'Default Card')
+                                : (localeProvider.isVietnamese ? 'Thẻ phụ' : 'Secondary Card')),
                         themeProvider,
                         valueColor: isExpired ? Colors.redAccent : (isDefault ? Colors.amber : themeProvider.subtitleColor),
                       ),
@@ -556,7 +560,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                       child: ElevatedButton.icon(
                         onPressed: _showTopUpDialog,
                         icon: const Icon(Icons.add_card),
-                        label: const Text('NẠP TIỀN VÀO THẺ', style: TextStyle(fontWeight: FontWeight.bold)),
+                        label: Text(localeProvider.isVietnamese ? 'NẠP TIỀN VÀO THẺ' : 'TOP UP CARD', style: const TextStyle(fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
                           foregroundColor: Colors.white,
@@ -570,7 +574,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                       child: ElevatedButton.icon(
                         onPressed: _showEditCardDialog,
                         icon: const Icon(Icons.edit_note),
-                        label: const Text('Chỉnh Sửa Thẻ'),
+                        label: Text(localeProvider.isVietnamese ? 'Chỉnh Sửa Thẻ' : 'Edit Card Info'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: themeProvider.primaryColor,
                           foregroundColor: Colors.white,

@@ -207,8 +207,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final bool isExpense = tx['isExpense'] == true;
     final double amount = _parseNum(tx['amount']);
     final String status = tx['status'] ?? 'Success';
-    final String title = tx['title'] ?? 'Giao dịch NFC';
-    final String cardName = tx['cardName'] ?? 'Thẻ NFC';
+    final String title = tx['title'] ?? localeProvider.getText('nfc_transaction');
+    final String cardName = tx['cardName'] ?? localeProvider.getText('nfc_card');
     final String createdAt = tx['createdAt'] != null
         ? DateTime.parse(tx['createdAt']).toLocal().toString().split('.')[0]
         : 'N/A';
