@@ -20,8 +20,20 @@ class PaymentScreen extends StatefulWidget {
 
 class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final TextEditingController _amountController = TextEditingController(text: '25.00');
-  final TextEditingController _noteController = TextEditingController(text: 'Thanh toán NFC 1-Chạm');
+  final TextEditingController _amountController = TextEditingController();
+  final TextEditingController _noteController = TextEditingController();
+  bool _didInitNote = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_didInitNote) {
+      _didInitNote = true;
+      final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
+      _noteController.text = localeProvider.isVietnamese ? 'Thanh toán NFC 1-Chạm' : '1-Tap NFC Payment';
+      _amountController.text = localeProvider.isVND ? '50000' : '25.00';
+    }
+  }
 
   List<dynamic> _cards = [];
   Map<String, dynamic>? _selectedCard;
@@ -86,6 +98,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
   }
 
   Future<void> _simulateNfcScanAndPay() async {
+    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
     HapticService.selectionFeedback();
     showDialog(
       context: context,
@@ -95,22 +108,22 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          children: const [
-            SizedBox(height: 12),
-            Icon(Icons.nfc, size: 70, color: Colors.cyanAccent),
-            SizedBox(height: 16),
+          children: [
+            const SizedBox(height: 12),
+            const Icon(Icons.nfc, size: 70, color: Colors.cyanAccent),
+            const SizedBox(height: 16),
             Text(
-              'Đang Kết Nối Sóng NFC 1-Chạm...',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+              localeProvider.isVietnamese ? 'Đang Kết Nối Sóng NFC 1-Chạm...' : 'Connecting 1-Tap NFC Signal...',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
-              'Giữ thiết bị gần thẻ hoặc máy POS...',
-              style: TextStyle(color: Colors.white70, fontSize: 12),
+              localeProvider.isVietnamese ? 'Giữ thiết bị gần thẻ hoặc máy POS...' : 'Hold device near card or POS terminal...',
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
             ),
-            SizedBox(height: 20),
-            LinearProgressIndicator(color: Colors.cyanAccent),
-            SizedBox(height: 12),
+            const SizedBox(height: 20),
+            const LinearProgressIndicator(color: Colors.cyanAccent),
+            const SizedBox(height: 12),
           ],
         ),
       ),
@@ -133,9 +146,10 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
   }
 
   Future<void> _processPaymentApi({required String method}) async {
+    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
     if (_selectedCard == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn hoặc thêm thẻ thanh toán vào ví trước!'), backgroundColor: Colors.red),
+        SnackBar(content: Text(localeProvider.isVietnamese ? 'Vui lòng chọn hoặc thêm thẻ thanh toán vào ví trước!' : 'Please select or add a payment card to your wallet first!'), backgroundColor: Colors.red),
       );
       return;
     }
@@ -143,7 +157,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
     final double amount = double.tryParse(_amountController.text.trim()) ?? 0.0;
     if (amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập số tiền thanh toán hợp lệ (lớn hơn 0)')),
+        SnackBar(content: Text(localeProvider.isVietnamese ? 'Vui lòng nhập số tiền thanh toán hợp lệ (lớn hơn 0)' : 'Please enter a valid payment amount (greater than 0)')),
       );
       return;
     }
@@ -157,8 +171,8 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         headers: authProvider.authHeaders,
         body: json.encode({
           'cardId': _selectedCard?['id'],
-          'title': _noteController.text.trim().isNotEmpty ? _noteController.text.trim() : 'Thanh toán $method',
-          'category': 'Thanh toán $method',
+          'title': _noteController.text.trim().isNotEmpty ? _noteController.text.trim() : '${localeProvider.isVietnamese ? "Thanh toán" : "Payment"} $method',
+          'category': '${localeProvider.isVietnamese ? "Thanh toán" : "Payment"} $method',
           'amount': amount,
           'isExpense': true,
           'status': 'Success',
@@ -170,13 +184,13 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         _showSuccessPaymentDialog(amount, method);
       } else {
         final resBody = json.decode(response.body);
-        throw Exception(resBody['error'] ?? 'Giao dịch thất bại');
+        throw Exception(resBody['error'] ?? 'Transaction failed');
       }
     } catch (e) {
       if (mounted) {
         HapticService.errorFeedback();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Thanh toán thất bại: ${e.toString().replaceAll("Exception: ", "")}'), backgroundColor: Colors.red),
+          SnackBar(content: Text('${localeProvider.isVietnamese ? "Thanh toán thất bại" : "Payment failed"}: ${e.toString().replaceAll("Exception: ", "")}'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -188,17 +202,18 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
     required String method,
     required VoidCallback onSuccess,
   }) async {
+    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
     if (_selectedCard == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn hoặc thêm thẻ thanh toán vào ví trước!'), backgroundColor: Colors.red),
+        SnackBar(content: Text(localeProvider.isVietnamese ? 'Vui lòng chọn hoặc thêm thẻ thanh toán vào ví trước!' : 'Please select or add a payment card to your wallet first!'), backgroundColor: Colors.red),
       );
       return;
     }
 
     if (CardUtils.isCardExpired(_selectedCard?['expiryDate'])) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Thẻ này đã hết hạn sử dụng! Vui lòng cập nhật hạn thẻ hoặc chọn thẻ khác.'),
+        SnackBar(
+          content: Text(localeProvider.isVietnamese ? 'Thẻ này đã hết hạn sử dụng! Vui lòng cập nhật hạn thẻ hoặc chọn thẻ khác.' : 'This card is expired! Please update expiry date or select another card.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -208,7 +223,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
     final double amount = double.tryParse(_amountController.text.trim()) ?? 0.0;
     if (amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập số tiền thanh toán hợp lệ (lớn hơn 0)')),
+        SnackBar(content: Text(localeProvider.isVietnamese ? 'Vui lòng nhập số tiền thanh toán hợp lệ (lớn hơn 0)' : 'Please enter a valid payment amount (greater than 0)')),
       );
       return;
     }
@@ -237,20 +252,20 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
           backgroundColor: const Color(0xFF16213E),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Row(
-            children: const [
-              Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 28),
-              SizedBox(width: 8),
-              Text('Cần Cập Nhật PIN', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 28),
+              const SizedBox(width: 8),
+              Text(localeProvider.isVietnamese ? 'Cần Cập Nhật PIN' : 'PIN Setup Required', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
             ],
           ),
-          content: const Text(
-            'Tài khoản của bạn chưa cài đặt Mã PIN bảo mật.\n\nVui lòng cập nhật Mã PIN trong Cài đặt trước khi thực hiện giao dịch thanh toán!',
-            style: TextStyle(color: Colors.white70, fontSize: 14),
+          content: Text(
+            localeProvider.isVietnamese ? 'Tài khoản của bạn chưa cài đặt Mã PIN bảo mật.\n\nVui lòng cập nhật Mã PIN trong Cài đặt trước khi thực hiện giao dịch thanh toán!' : 'Your account does not have a Security PIN set.\n\nPlease update your Security PIN in Settings before paying!',
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Đóng', style: TextStyle(color: Colors.white54)),
+              child: Text(localeProvider.getText('cancel'), style: const TextStyle(color: Colors.white54)),
             ),
             ElevatedButton.icon(
               onPressed: () {
@@ -258,7 +273,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                 Navigator.pushNamed(context, '/settings');
               },
               icon: const Icon(Icons.settings, size: 18),
-              label: const Text('Cập nhật PIN ngay'),
+              label: Text(localeProvider.isVietnamese ? 'Cập nhật PIN ngay' : 'Update PIN Now'),
               style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black),
             ),
           ],
@@ -267,7 +282,6 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       return;
     }
 
-    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
     final pinController = TextEditingController();
     final pinFormKey = GlobalKey<FormState>();
     bool isVerifyingPin = false;
@@ -283,13 +297,13 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
             children: [
               const Icon(Icons.shield_outlined, color: Colors.cyanAccent, size: 40),
               const SizedBox(height: 8),
-              const Text(
-                'Xác Nhận Mã PIN Thanh Toán',
-                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                localeProvider.isVietnamese ? 'Xác Nhận Mã PIN Thanh Toán' : 'Confirm Security PIN',
+                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
               Text(
-                'Số tiền: ${localeProvider.formatAmount(amount)} - ${_selectedCard?['cardName'] ?? ''}',
+                '${localeProvider.isVietnamese ? "Số tiền" : "Amount"}: ${localeProvider.formatAmount(amount)} - ${_selectedCard?['cardName'] ?? ''}',
                 style: const TextStyle(color: Colors.cyanAccent, fontSize: 13),
               ),
             ],
@@ -299,10 +313,10 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'Nhập Mã PIN bảo mật (6 chữ số) để xác nhận thanh toán:',
+                Text(
+                  localeProvider.isVietnamese ? 'Nhập Mã PIN bảo mật (6 chữ số) để xác nhận thanh toán:' : 'Enter 6-digit Security PIN to confirm payment:',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -324,7 +338,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                   ),
                   validator: (v) => (v?.length ?? 0) != 6 || !RegExp(r'^\d+$').hasMatch(v ?? '')
-                      ? 'Mã PIN phải gồm đúng 6 chữ số'
+                      ? localeProvider.getText('pin_required')
                       : null,
                 ),
               ],
@@ -336,11 +350,11 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                 Navigator.pop(ctx);
                 _showResetPinDialogInPayment();
               },
-              child: const Text('Quên PIN?', style: TextStyle(color: Colors.cyanAccent, fontSize: 13, fontWeight: FontWeight.bold)),
+              child: Text(localeProvider.isVietnamese ? 'Quên PIN?' : 'Forgot PIN?', style: const TextStyle(color: Colors.cyanAccent, fontSize: 13, fontWeight: FontWeight.bold)),
             ),
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Hủy bỏ', style: TextStyle(color: Colors.white54)),
+              child: Text(localeProvider.getText('cancel'), style: const TextStyle(color: Colors.white54)),
             ),
             ElevatedButton(
               onPressed: isVerifyingPin
@@ -363,7 +377,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                               HapticService.errorFeedback();
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text(resData['error'] ?? 'Mã PIN không chính xác'),
+                                  content: Text(resData['error'] ?? (localeProvider.isVietnamese ? 'Mã PIN không chính xác' : 'Incorrect Security PIN')),
                                   backgroundColor: Colors.redAccent,
                                 ),
                               );
@@ -372,7 +386,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                         } catch (e) {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Lỗi xác thực PIN: $e'), backgroundColor: Colors.redAccent),
+                              SnackBar(content: Text('${localeProvider.isVietnamese ? "Lỗi xác thực PIN" : "PIN verification error"}: $e'), backgroundColor: Colors.redAccent),
                             );
                           }
                         } finally {
@@ -387,7 +401,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
               ),
               child: isVerifyingPin
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
-                  : const Text('Xác Nhận & Thanh Toán', style: TextStyle(fontWeight: FontWeight.bold)),
+                  : Text(localeProvider.isVietnamese ? 'Xác Nhận & Thanh Toán' : 'Confirm & Pay', style: const TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -516,9 +530,9 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
               child: const Icon(Icons.check_circle, size: 60, color: Colors.greenAccent),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Thanh Toán Thành Công!',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
+            Text(
+              localeProvider.isVietnamese ? 'Thanh Toán Thành Công!' : 'Payment Successful!',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
             ),
             const SizedBox(height: 8),
             FittedBox(
@@ -530,7 +544,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
             ),
             const SizedBox(height: 8),
             Text(
-              'Phương thức: $method\nNguồn tiền: ${_selectedCard?['cardName'] ?? 'Thẻ NFC'}',
+              '${localeProvider.isVietnamese ? "Phương thức" : "Method"}: $method\n${localeProvider.isVietnamese ? "Nguồn tiền" : "Source"}: ${_selectedCard?['cardName'] ?? (localeProvider.isVietnamese ? 'Thẻ NFC' : 'NFC Card')}',
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white70, fontSize: 13),
             ),
@@ -538,7 +552,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx),
               style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent),
-              child: const Text('Hoàn Tất'),
+              child: Text(localeProvider.isVietnamese ? 'Hoàn Tất' : 'Done'),
             ),
           ],
         ),
@@ -595,7 +609,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       children: [
         // Card Selection Dropdown
         Text(
-          'Chọn Nguồn Thẻ Thanh Toán',
+          localeProvider.isVietnamese ? 'Chọn Nguồn Thẻ Thanh Toán' : 'Select Payment Card Source',
           style: TextStyle(color: themeProvider.subtitleColor, fontSize: 13, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
@@ -618,14 +632,14 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                   ),
                 ),
                 items: _cards.map((c) {
-                  final String name = c['cardName']?.toString() ?? 'Thẻ';
+                  final String name = c['cardName']?.toString() ?? (localeProvider.isVietnamese ? 'Thẻ' : 'Card');
                   final String numStr = c['cardNumber']?.toString() ?? '0000';
                   final String last4 = numStr.length >= 4 ? numStr.substring(numStr.length - 4) : numStr;
                   final bool isExp = CardUtils.isCardExpired(c['expiryDate']);
                   return DropdownMenuItem<Map<String, dynamic>>(
                     value: c,
                     child: Text(
-                      '$name (**** $last4)${isExp ? " [ĐÃ HẾT HẠN]" : ""}',
+                      '$name (**** $last4)${isExp ? (localeProvider.isVietnamese ? " [ĐÃ HẾT HẠN]" : " [EXPIRED]") : ""}',
                       style: TextStyle(
                         color: isExp ? Colors.redAccent : themeProvider.textColor,
                         fontWeight: isExp ? FontWeight.bold : FontWeight.normal,
@@ -642,7 +656,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
 
         // Amount Input
         Text(
-          'Số Tiền Thanh Toán (${localeProvider.currencySymbol})',
+          '${localeProvider.isVietnamese ? "Số Tiền Thanh Toán" : "Payment Amount"} (${localeProvider.currencySymbol})',
           style: TextStyle(color: themeProvider.subtitleColor, fontSize: 13, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
@@ -707,7 +721,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
           controller: _noteController,
           style: TextStyle(color: themeProvider.textColor),
           decoration: InputDecoration(
-            labelText: 'Nội dung / Ghi chú thanh toán',
+            labelText: localeProvider.isVietnamese ? 'Nội dung / Ghi chú thanh toán' : 'Payment Description / Notes',
             labelStyle: TextStyle(color: themeProvider.subtitleColor),
             filled: true,
             fillColor: themeProvider.inputFillColor,
@@ -782,7 +796,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                         Icon(Icons.qr_code_scanner_rounded, color: themeProvider.accentColor, size: 28),
                         const SizedBox(width: 10),
                         Text(
-                          'Ống Kính Quét Mã QR',
+                          localeProvider.isVietnamese ? 'Ống Kính Quét Mã QR' : 'QR Code Scanner',
                           style: TextStyle(color: themeProvider.textColor, fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                       ],
@@ -838,9 +852,9 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                               color: Colors.black54,
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            child: const Text(
-                              'Đang quét... Hướng máy ảnh vào Mã QR',
-                              style: TextStyle(color: Colors.white70, fontSize: 12),
+                            child: Text(
+                              localeProvider.isVietnamese ? 'Đang quét... Hướng máy ảnh vào Mã QR' : 'Scanning... Point camera at QR Code',
+                              style: const TextStyle(color: Colors.white70, fontSize: 12),
                             ),
                           ),
                         ),

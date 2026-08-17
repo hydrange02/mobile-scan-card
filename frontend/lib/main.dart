@@ -157,6 +157,7 @@ class _LockOverlayScreenState extends State<LockOverlayScreen> {
   }
 
   Widget _buildForgotPinOverlay() {
+    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
     return Container(
       color: Colors.black.withValues(alpha: 0.75),
       alignment: Alignment.center,
@@ -166,13 +167,13 @@ class _LockOverlayScreenState extends State<LockOverlayScreen> {
           backgroundColor: const Color(0xFF16213E),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Row(
-            children: const [
-              Icon(Icons.lock_reset_rounded, color: Colors.cyanAccent, size: 28),
-              SizedBox(width: 8),
+            children: [
+              const Icon(Icons.lock_reset_rounded, color: Colors.cyanAccent, size: 28),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Mở Khóa Qua Mật Khẩu',
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  localeProvider.isVietnamese ? 'Mở Khóa Qua Mật Khẩu' : 'Unlock Via Password',
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -183,9 +184,9 @@ class _LockOverlayScreenState extends State<LockOverlayScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
-                    'Nhập mật khẩu tài khoản để mở khóa và cài đặt lại Mã PIN mới (6 chữ số):',
-                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                  Text(
+                    localeProvider.getText('enter_password_to_reset_pin'),
+                    style: const TextStyle(color: Colors.white70, fontSize: 13),
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
@@ -194,12 +195,12 @@ class _LockOverlayScreenState extends State<LockOverlayScreen> {
                     obscureText: true,
                     autocorrect: false,
                     enableSuggestions: false,
-                    decoration: const InputDecoration(
-                      labelText: 'Mật khẩu đăng nhập',
-                      labelStyle: TextStyle(color: Colors.white70),
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: localeProvider.getText('account_password'),
+                      labelStyle: const TextStyle(color: Colors.white70),
+                      border: const OutlineInputBorder(),
                     ),
-                    validator: (v) => (v?.trim().isEmpty ?? true) ? 'Vui lòng nhập mật khẩu' : null,
+                    validator: (v) => (v?.trim().isEmpty ?? true) ? localeProvider.getText('current_pass_required') : null,
                   ),
                   const SizedBox(height: 14),
                   TextFormField(
@@ -211,13 +212,13 @@ class _LockOverlayScreenState extends State<LockOverlayScreen> {
                     inputFormatters: [
                       FilteringTextInputFormatter.digitsOnly,
                     ],
-                    decoration: const InputDecoration(
-                      labelText: 'Mã PIN mới (đúng 6 chữ số)',
-                      labelStyle: TextStyle(color: Colors.white70),
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: localeProvider.getText('new_pin'),
+                      labelStyle: const TextStyle(color: Colors.white70),
+                      border: const OutlineInputBorder(),
                     ),
                     validator: (v) => (v?.trim().length ?? 0) != 6 || !RegExp(r'^\d+$').hasMatch(v?.trim() ?? '')
-                        ? 'Mã PIN phải gồm đúng 6 chữ số'
+                        ? localeProvider.getText('pin_required')
                         : null,
                   ),
                   if (_forgotDialogError != null) ...[
@@ -248,7 +249,7 @@ class _LockOverlayScreenState extends State<LockOverlayScreen> {
                   _forgotDialogError = null;
                 });
               },
-              child: const Text('Hủy', style: TextStyle(color: Colors.white54)),
+              child: Text(localeProvider.getText('cancel'), style: const TextStyle(color: Colors.white54)),
             ),
             ElevatedButton(
               onPressed: _isForgotSubmitting
@@ -284,8 +285,8 @@ class _LockOverlayScreenState extends State<LockOverlayScreen> {
                             final currentCtx = navigatorKey.currentContext ?? context;
                             if (currentCtx.mounted) {
                               ScaffoldMessenger.of(currentCtx).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Đặt lại Mã PIN & mở khóa thành công!'),
+                                SnackBar(
+                                  content: Text(localeProvider.getText('pin_reset_success')),
                                   backgroundColor: Colors.green,
                                 ),
                               );
@@ -293,12 +294,12 @@ class _LockOverlayScreenState extends State<LockOverlayScreen> {
                           } else {
                             final resData = jsonDecode(response.body);
                             setState(() {
-                              _forgotDialogError = resData['error'] ?? 'Mật khẩu không chính xác hoặc đặt lại PIN thất bại';
+                              _forgotDialogError = resData['error'] ?? (localeProvider.isVietnamese ? 'Mật khẩu không chính xác hoặc đặt lại PIN thất bại' : 'Incorrect password or PIN reset failed');
                             });
                           }
                         } catch (e) {
                           setState(() {
-                            _forgotDialogError = 'Lỗi kết nối máy chủ';
+                            _forgotDialogError = localeProvider.isVietnamese ? 'Lỗi kết nối máy chủ' : 'Server connection error';
                           });
                         } finally {
                           if (mounted) {
@@ -312,7 +313,7 @@ class _LockOverlayScreenState extends State<LockOverlayScreen> {
               style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black),
               child: _isForgotSubmitting
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
-                  : const Text('Mở khóa & Lưu PIN'),
+                  : Text(localeProvider.isVietnamese ? 'Mở khóa & Lưu PIN' : 'Unlock & Save PIN', style: const TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
