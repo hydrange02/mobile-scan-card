@@ -700,14 +700,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                             ],
                           ),
-                          if (authProvider.user?['hasPin'] == true || (authProvider.user?['hasPin'] != false && authProvider.user?['pin'] != null))
-                            TextButton(
-                              onPressed: _showForgotPinDialog,
-                              child: Text(
-                                localeProvider.getText('forgot_pin'),
-                                style: const TextStyle(color: Colors.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold),
-                              ),
+                          TextButton(
+                            onPressed: _showForgotPinDialog,
+                            child: Text(
+                              localeProvider.getText('forgot_pin'),
+                              style: const TextStyle(color: Colors.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold),
                             ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 14),
@@ -724,6 +723,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             labelText: localeProvider.getText('current_pin'),
                             labelStyle: TextStyle(color: themeProvider.subtitleColor),
                             border: const OutlineInputBorder(),
+                            suffixIcon: TextButton(
+                              onPressed: _showForgotPinDialog,
+                              child: const Text('Quên?', style: TextStyle(color: Colors.cyanAccent, fontSize: 11)),
+                            ),
                           ),
                           obscureText: true,
                           validator: (v) => (v?.length ?? 0) != 6 || !RegExp(r'^\d+$').hasMatch(v ?? '') ? 'Vui lòng nhập đúng 6 chữ số Mã PIN hiện tại' : null,
