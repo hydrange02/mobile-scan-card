@@ -651,10 +651,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.cyanAccent.withValues(alpha: 0.15),
+                      color: themeProvider.accentColor.withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.person, color: Colors.cyanAccent, size: 32),
+                    child: Icon(Icons.person, color: themeProvider.accentColor, size: 32),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -674,14 +674,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           const SizedBox(height: 2),
                           Text(
                             'SĐT: ${user['phone']}',
-                            style: const TextStyle(fontSize: 12, color: Colors.cyanAccent, fontWeight: FontWeight.bold),
+                            style: TextStyle(fontSize: 12, color: themeProvider.accentColor, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ],
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.cyanAccent),
+                    icon: Icon(Icons.edit, color: themeProvider.accentColor),
                     onPressed: _showEditProfileDialog,
                   ),
                 ],

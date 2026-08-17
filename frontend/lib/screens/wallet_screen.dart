@@ -423,7 +423,7 @@ class _WalletScreenState extends State<WalletScreen> {
     return Scaffold(
       backgroundColor: themeProvider.backgroundColor,
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Colors.purpleAccent))
+          ? Center(child: CircularProgressIndicator(color: themeProvider.primaryColor))
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
@@ -449,7 +449,7 @@ class _WalletScreenState extends State<WalletScreen> {
                       icon: const Icon(Icons.add, size: 18),
                       label: const Text('THÊM THẺ MỚI'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.purpleAccent,
+                        backgroundColor: themeProvider.primaryColor,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -465,23 +465,26 @@ class _WalletScreenState extends State<WalletScreen> {
                     padding: const EdgeInsets.all(32),
                     margin: const EdgeInsets.only(top: 20),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.05),
+                      color: themeProvider.cardColor,
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: Colors.white12),
+                      border: Border.all(color: themeProvider.cardBorderColor),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
+                      ],
                     ),
                     child: Column(
                       children: [
-                        const Icon(Icons.wallet, size: 64, color: Colors.purpleAccent),
+                        Icon(Icons.wallet, size: 64, color: themeProvider.primaryColor),
                         const SizedBox(height: 16),
-                        const Text(
+                        Text(
                           'Chưa có thẻ trong ví',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: themeProvider.textColor),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
+                        Text(
                           'Thêm thẻ ngay để bắt đầu trải nghiệm thanh toán NFC 1-Chạm nhanh chóng và an toàn!',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.white70, fontSize: 13),
+                          style: TextStyle(color: themeProvider.subtitleColor, fontSize: 13),
                         ),
                         const SizedBox(height: 20),
                         ElevatedButton.icon(
@@ -489,8 +492,8 @@ class _WalletScreenState extends State<WalletScreen> {
                           icon: const Icon(Icons.add_card),
                           label: const Text('Thêm thẻ ngay'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.cyanAccent,
-                            foregroundColor: Colors.black,
+                            backgroundColor: themeProvider.primaryColor,
+                            foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                           ),
                         ),

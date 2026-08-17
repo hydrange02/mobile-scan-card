@@ -12,13 +12,15 @@ class ThemeProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Color get backgroundColor => isDarkMode ? const Color(0xFF0F0F1A) : const Color(0xFFF4F5F9);
+  Color get backgroundColor => isDarkMode ? const Color(0xFF0F0F1A) : const Color(0xFFF8FAFC);
   Color get cardColor => isDarkMode ? const Color(0xFF1E1E2C) : Colors.white;
-  Color get textColor => isDarkMode ? Colors.white : const Color(0xFF1A1A2E);
-  Color get subtitleColor => isDarkMode ? Colors.white70 : Colors.black54;
-  Color get cardBorderColor => isDarkMode ? Colors.white12 : Colors.black12;
+  Color get textColor => isDarkMode ? Colors.white : const Color(0xFF0F172A);
+  Color get subtitleColor => isDarkMode ? Colors.white70 : const Color(0xFF64748B);
+  Color get cardBorderColor => isDarkMode ? Colors.white12 : const Color(0xFFE2E8F0);
   Color get dialogBgColor => isDarkMode ? const Color(0xFF16213E) : Colors.white;
-  Color get inputFillColor => isDarkMode ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04);
+  Color get inputFillColor => isDarkMode ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF1F5F9);
+  Color get accentColor => isDarkMode ? Colors.cyanAccent : const Color(0xFF0284C7);
+  Color get primaryColor => isDarkMode ? Colors.purpleAccent : const Color(0xFF6366F1);
 
   static ThemeData get darkTheme {
     return ThemeData(
@@ -43,19 +45,19 @@ class ThemeProvider extends ChangeNotifier {
   static ThemeData get lightTheme {
     return ThemeData(
       brightness: Brightness.light,
-      primaryColor: Colors.purple,
-      scaffoldBackgroundColor: const Color(0xFFF4F5F9),
+      primaryColor: const Color(0xFF6366F1),
+      scaffoldBackgroundColor: const Color(0xFFF8FAFC),
       cardColor: Colors.white,
       useMaterial3: true,
       appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.purple,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: Colors.white,
+        foregroundColor: Color(0xFF0F172A),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: Colors.white,
-        selectedItemColor: Colors.purple,
-        unselectedItemColor: Colors.grey,
+        selectedItemColor: Color(0xFF6366F1),
+        unselectedItemColor: Color(0xFF94A3B8),
       ),
     );
   }

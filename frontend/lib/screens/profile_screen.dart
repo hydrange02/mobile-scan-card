@@ -482,10 +482,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     height: 60,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: const LinearGradient(colors: [Colors.cyanAccent, Colors.purpleAccent]),
+                      gradient: LinearGradient(colors: [themeProvider.accentColor, themeProvider.primaryColor]),
                       border: Border.all(color: themeProvider.cardBorderColor, width: 2),
                     ),
-                    child: const Icon(Icons.person, color: Colors.black, size: 36),
+                    child: const Icon(Icons.person, color: Colors.white, size: 36),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -507,14 +507,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           const SizedBox(height: 2),
                           Text(
                             'SĐT: ${authProvider.user!['phone']}',
-                            style: const TextStyle(color: Colors.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: themeProvider.accentColor, fontSize: 12, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ],
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.edit_note_rounded, color: Colors.cyanAccent, size: 28),
+                    icon: Icon(Icons.edit_note_rounded, color: themeProvider.accentColor, size: 28),
                     tooltip: 'Cập nhật thông tin cá nhân',
                     onPressed: () => _showEditProfileDialog(authProvider),
                   ),

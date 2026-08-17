@@ -10,6 +10,7 @@ import 'card_detail_screen.dart';
 import 'payment_screen.dart';
 import '../providers/locale_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
 import '../services/haptic_service.dart';
 import '../services/api_config.dart';
 import '../services/card_utils.dart';
@@ -98,9 +99,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHomeDashboard() {
     final localeProvider = Provider.of<LocaleProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
 
     if (isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Colors.purpleAccent));
+      return Center(child: CircularProgressIndicator(color: themeProvider.primaryColor));
     }
 
     // Find default card or first available card
@@ -127,23 +129,26 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
+              color: themeProvider.cardColor,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white12),
+              border: Border.all(color: themeProvider.cardBorderColor),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
+              ],
             ),
             child: Column(
               children: [
-                const Icon(Icons.credit_card_off_rounded, size: 48, color: Colors.purpleAccent),
+                Icon(Icons.credit_card_off_rounded, size: 48, color: themeProvider.primaryColor),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'Chưa có thẻ nào trong ví',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: themeProvider.textColor),
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'Hãy thêm thẻ ngay để xem chi tiết số dư và quản lý các giao dịch của bạn!',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                  style: TextStyle(color: themeProvider.subtitleColor, fontSize: 13),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
@@ -154,7 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: const Icon(Icons.add_card),
                   label: const Text('Thêm thẻ ngay'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.purpleAccent,
+                    backgroundColor: themeProvider.primaryColor,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -239,36 +244,36 @@ class _HomeScreenState extends State<HomeScreen> {
                           const Icon(Icons.nfc, color: Colors.cyanAccent, size: 28),
                         ],
                       ),
-                  const SizedBox(height: 16),
-                  Text(
-                    cardName,
-                    style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                      const SizedBox(height: 16),
+                      Text(
+                        cardName,
+                        style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        localeProvider.getText('available_balance'),
+                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                      const SizedBox(height: 4),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          localeProvider.formatAmount(cardBalance),
+                          style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold, letterSpacing: 1),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        maskedNumber,
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 2),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    localeProvider.getText('available_balance'),
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
-                  const SizedBox(height: 4),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      localeProvider.formatAmount(cardBalance),
-                      style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold, letterSpacing: 1),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    maskedNumber,
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 2),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }),
-        ),
+                ),
+              );
+            }),
+          ),
 
         const SizedBox(height: 20),
 
@@ -278,19 +283,22 @@ class _HomeScreenState extends State<HomeScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
+            color: themeProvider.cardColor,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.3)),
+            border: Border.all(color: themeProvider.cardBorderColor),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 3)),
+            ],
           ),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.cyanAccent.withValues(alpha: 0.15),
+                  color: themeProvider.accentColor.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.campaign_rounded, color: Colors.cyanAccent, size: 26),
+                child: Icon(Icons.campaign_rounded, color: themeProvider.accentColor, size: 26),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -299,17 +307,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text(
                       localeProvider.getText('system_notice'),
-                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: themeProvider.textColor, fontSize: 14),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       localeProvider.getText('notice_content'),
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      style: TextStyle(color: themeProvider.subtitleColor, fontSize: 12),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: Colors.white54),
+              Icon(Icons.chevron_right, color: themeProvider.subtitleColor),
             ],
           ),
         ),
@@ -324,7 +332,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Text(
               localeProvider.getText('recent_transactions'),
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: themeProvider.textColor),
             ),
             TextButton(
               onPressed: () {
@@ -333,7 +341,7 @@ class _HomeScreenState extends State<HomeScreen> {
               },
               child: Text(
                 localeProvider.getText('see_all'),
-                style: const TextStyle(color: Colors.purpleAccent, fontWeight: FontWeight.bold),
+                style: TextStyle(color: themeProvider.primaryColor, fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -345,13 +353,14 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.03),
+              color: themeProvider.cardColor,
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: themeProvider.cardBorderColor),
             ),
-            child: const Center(
+            child: Center(
               child: Text(
                 'Chưa có lịch sử giao dịch nào',
-                style: TextStyle(color: Colors.white54, fontSize: 13),
+                style: TextStyle(color: themeProvider.subtitleColor, fontSize: 13),
               ),
             ),
           )
@@ -361,8 +370,11 @@ class _HomeScreenState extends State<HomeScreen> {
             final String amountText = '${isExpense ? '-' : '+'}${localeProvider.formatAmount(tx['amount'])}';
             return Card(
               margin: const EdgeInsets.only(bottom: 10),
-              color: Colors.white.withValues(alpha: 0.03),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              color: themeProvider.cardColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+                side: BorderSide(color: themeProvider.cardBorderColor),
+              ),
               child: ListTile(
                 leading: CircleAvatar(
                   backgroundColor: isExpense
@@ -370,17 +382,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       : Colors.greenAccent.withValues(alpha: 0.15),
                   child: Icon(
                     isExpense ? Icons.shopping_bag_outlined : Icons.account_balance_wallet_outlined,
-                    color: isExpense ? Colors.redAccent : Colors.greenAccent,
+                    color: isExpense ? Colors.redAccent : Colors.green,
                     size: 20,
                   ),
                 ),
                 title: Text(
                   tx['title'].toString(),
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                  style: TextStyle(fontWeight: FontWeight.bold, color: themeProvider.textColor),
                 ),
                 subtitle: Text(
                   '${_formatDate(tx['date']?.toString())} • ${tx['cardName']}',
-                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  style: TextStyle(color: themeProvider.subtitleColor, fontSize: 12),
                 ),
                 trailing: SizedBox(
                   width: 130,
@@ -392,7 +404,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
-                        color: isExpense ? Colors.redAccent : Colors.greenAccent,
+                        color: isExpense ? Colors.redAccent : Colors.green,
                       ),
                     ),
                   ),
@@ -407,6 +419,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final localeProvider = Provider.of<LocaleProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
 
     final List<Widget> pages = [
       _buildHomeDashboard(),
@@ -417,11 +430,16 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
 
     return Scaffold(
+      backgroundColor: themeProvider.backgroundColor,
       appBar: AppBar(
-        title: Text(localeProvider.getText('app_title')),
+        title: Text(
+          localeProvider.getText('app_title'),
+          style: TextStyle(color: themeProvider.textColor, fontWeight: FontWeight.bold),
+        ),
+        iconTheme: IconThemeData(color: themeProvider.textColor),
         actions: [
           IconButton(
-            icon: const Icon(Icons.help_outline),
+            icon: Icon(Icons.help_outline, color: themeProvider.textColor),
             onPressed: () {
               HapticService.selectionFeedback();
               Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpScreen()));
@@ -444,7 +462,10 @@ class _HomeScreenState extends State<HomeScreen> {
         items: [
           BottomNavigationBarItem(icon: const Icon(Icons.home), label: localeProvider.getText('home')),
           BottomNavigationBarItem(icon: const Icon(Icons.wallet), label: localeProvider.getText('wallet')),
-          BottomNavigationBarItem(icon: const Icon(Icons.nfc_rounded, color: Colors.cyanAccent), label: 'Thanh toán'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.nfc_rounded, color: themeProvider.isDarkMode ? Colors.cyanAccent : const Color(0xFF6366F1)),
+            label: 'Thanh toán',
+          ),
           BottomNavigationBarItem(icon: const Icon(Icons.bar_chart), label: localeProvider.getText('reports')),
           BottomNavigationBarItem(icon: const Icon(Icons.settings), label: localeProvider.getText('settings')),
         ],
