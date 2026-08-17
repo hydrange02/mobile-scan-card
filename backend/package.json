@@ -5,8 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "tsx watch index.js",
-    "start": "node index.js"
+    "db:push": "prisma db push",
+    "dev": "prisma db push && tsx watch index.js",
+    "start": "prisma db push && node index.js"
   },
   "keywords": [],
   "author": "",
