@@ -464,7 +464,7 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(icon: const Icon(Icons.wallet), label: localeProvider.getText('wallet')),
           BottomNavigationBarItem(
             icon: Icon(Icons.nfc_rounded, color: themeProvider.isDarkMode ? Colors.cyanAccent : const Color(0xFF6366F1)),
-            label: 'Thanh toán',
+            label: localeProvider.getText('payment_label'),
           ),
           BottomNavigationBarItem(icon: const Icon(Icons.bar_chart), label: localeProvider.getText('reports')),
           BottomNavigationBarItem(icon: const Icon(Icons.settings), label: localeProvider.getText('settings')),
