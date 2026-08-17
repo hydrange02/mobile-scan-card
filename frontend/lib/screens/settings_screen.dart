@@ -416,6 +416,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     labelText: 'Mã PIN hiện tại (6 chữ số)',
                     labelStyle: TextStyle(color: themeProvider.subtitleColor),
                     border: const OutlineInputBorder(),
+                    suffixIcon: TextButton(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _showForgotPinDialog();
+                      },
+                      child: const Text('Quên?', style: TextStyle(color: Colors.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ),
                   ),
                   validator: (v) => (v?.length ?? 0) != 6 || !RegExp(r'^\d+$').hasMatch(v ?? '') ? 'Mã PIN hiện tại phải gồm đúng 6 chữ số' : null,
                 ),
