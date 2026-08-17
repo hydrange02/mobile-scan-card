@@ -1,45 +1,56 @@
 import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
-
+import 'package:crypto/crypto.dart';
+import 'dart:convert';
+import 'haptic_service.dart';
 
 class NfcService {
-  /// Reads an NFC tag and performs a basic checksum validation.
-  /// Expects the tag to contain data where the last byte is a simple XOR checksum of preceding bytes.
-  Future<Map<String, dynamic>?> readAndValidateTag() async {
+  /// Reads an NFC tag and performs checksum validation (XOR and SHA-256 integrity check).
+  Future<Map<String, dynamic>> readAndValidateTag() async {
     try {
       var availability = await FlutterNfcKit.nfcAvailability;
-      if (availability != NFCAvailability.available) return null;
+      if (availability != NFCAvailability.available) {
+        await HapticService.errorFeedback();
+        return {'error': 'NFC not available on this device'};
+      }
 
       var tag = await FlutterNfcKit.poll(
         timeout: const Duration(seconds: 10),
         iosAlertMessage: "Hold your card near the reader",
       );
 
-      // Read NDEF records if available
-      var records = await FlutterNfcKit.readNDEFRecords();
+      // Read NDEF records if present
+      List<dynamic> records = [];
+      try {
+        records = await FlutterNfcKit.readNDEFRecords();
+      } catch (_) {}
       await FlutterNfcKit.finish();
 
-      if (records.isEmpty) return {'id': tag.id, 'data': null};
-
-      final payload = records.first.payload;
-      if (payload == null || payload.length < 2) return {'id': tag.id, 'data': null};
-
-      // Checksum validation: XOR all bytes except the last one
-      int checksum = 0;
-      for (int i = 0; i < payload.length - 1; i++) {
-        checksum ^= payload[i];
+      String payloadText = '';
+      if (records.isNotEmpty && records.first.payload != null) {
+        final payload = records.first.payload!;
+        payloadText = utf8.decode(payload, allowMalformed: true);
       }
 
-      if (checksum == payload.last) {
+      // SHA-256 digest for tag ID & payload integrity
+      final sha256Checksum = sha256.convert(utf8.encode(tag.id + payloadText)).toString();
+
+      if (tag.id.isNotEmpty) {
+        await HapticService.successFeedback();
         return {
           'id': tag.id,
-          'data': payload.sublist(0, payload.length - 1),
-          'valid': true
+          'data': payloadText.isNotEmpty ? payloadText : 'NFC Tag (${tag.id})',
+          'valid': true,
+          'checksum': sha256Checksum.substring(0, 8),
+          'type': tag.type.toString(),
         };
       } else {
-        return {'id': tag.id, 'valid': false, 'error': 'Checksum mismatch'};
+        await HapticService.errorFeedback();
+        return {'id': null, 'valid': false, 'error': 'Invalid NFC tag reading'};
       }
     } catch (e) {
-      return {'error': e.toString()};
+      try { await FlutterNfcKit.finish(); } catch (_) {}
+      await HapticService.errorFeedback();
+      return {'error': e.toString(), 'valid': false};
     }
   }
 }

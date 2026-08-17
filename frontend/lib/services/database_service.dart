@@ -2,7 +2,6 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
 
-
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
   factory DatabaseService() => _instance;
@@ -10,9 +9,7 @@ class DatabaseService {
 
   static Database? _database;
   
-  // In a production app, store this key in FlutterSecureStorage
-  final _key = encrypt.Key.fromUtf8('my32lengthsupersecretkeymustbe32');
-  final _iv = encrypt.IV.fromLength(16);
+  final _key = encrypt.Key.fromUtf8('a-very-secret-32-character-key!!');
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -34,13 +31,15 @@ class DatabaseService {
   }
 
   Future<void> saveCard(String name, String rawData) async {
+    final iv = encrypt.IV.fromSecureRandom(16);
     final encrypter = encrypt.Encrypter(encrypt.AES(_key, mode: encrypt.AESMode.cbc));
-    final encrypted = encrypter.encrypt(rawData, iv: _iv);
+    final encrypted = encrypter.encrypt(rawData, iv: iv);
+    final payload = '${iv.base64}:${encrypted.base64}';
     
     final db = await database;
     await db.insert('cards', {
       'name': name,
-      'encryptedData': encrypted.base64,
+      'encryptedData': payload,
       'createdAt': DateTime.now().toIso8601String(),
     });
   }
@@ -53,7 +52,19 @@ class DatabaseService {
     
     return maps.map((row) {
       try {
-        final decrypted = encrypter.decrypt64(row['encryptedData'], iv: _iv);
+        final rawData = row['encryptedData'] as String;
+        final parts = rawData.split(':');
+        encrypt.IV iv;
+        String cipherBase64;
+        if (parts.length == 2) {
+          iv = encrypt.IV.fromBase64(parts[0]);
+          cipherBase64 = parts[1];
+        } else {
+          iv = encrypt.IV.fromLength(16);
+          cipherBase64 = rawData;
+        }
+
+        final decrypted = encrypter.decrypt64(cipherBase64, iv: iv);
         return {
           'id': row['id'],
           'name': row['name'],
