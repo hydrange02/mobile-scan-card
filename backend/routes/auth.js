@@ -34,8 +34,16 @@ router.post('/register', async (req, res) => {
     });
     res.status(201).json({ id: user.id, username: user.username, email: user.email });
   } catch (error) {
-    console.error("Register error:", error);
-    res.status(400).json({ error: 'Đăng ký thất bại: Email này đã được sử dụng' });
+    console.error("Register error detail:", error);
+    if (error.code === 'P2002') {
+      const targets = error.meta?.target;
+      const targetStr = Array.isArray(targets) ? targets.join(', ') : String(targets || '');
+      if (targetStr.includes('email')) {
+        return res.status(400).json({ error: 'Đăng ký thất bại: Email này đã được sử dụng' });
+      }
+      return res.status(400).json({ error: `Đăng ký thất bại: Trùng lặp dữ liệu (${targetStr})` });
+    }
+    res.status(500).json({ error: `Lỗi máy chủ/CSDL: ${error.message || 'Không thể tạo tài khoản'}` });
   }
 });
 
